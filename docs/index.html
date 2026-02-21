@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Humans</title>
+    <style>
+        body {
+            background-color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas {
+            background: #ffffff;
+            max-width: 100%;
+            max-height: 100vh;
+        }
+        #source-image { display: none; }
+    </style>
+</head>
+<body>
+
+    <img id="source-image" src="humans1.png" alt="Source">
+    <canvas id="main-canvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('main-canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const image = document.getElementById('source-image');
+    let particlesArray = [];
+    let animationId;
+
+    const config = {
+        density: 13,
+        size: 19,
+        jitter: 3.5,
+        speed: 0.23,
+        opacity: 0.7
+    };
+
+    class Particle {
+        constructor(x, y, r, g, b) {
+            this.originX = x;
+            this.originY = y;
+            this.x = x;
+            this.y = y;
+            this.rgbString = `rgb(${r},${g},${b})`;
+            this.angle = Math.random() * Math.PI * 2;
+            this.speedVariance = Math.random() * 0.5 + 0.5;
+            this.opacityFactor = Math.random() * 0.7 + 0.3;
+            this.sizeFactor = Math.random() * 0.6 + 0.4;
+        }
+
+        update() {
+            this.angle += config.speed * this.speedVariance;
+            this.x = this.originX + Math.cos(this.angle) * config.jitter;
+            this.y = this.originY + Math.sin(this.angle) * config.jitter;
+        }
+
+        draw() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, config.size * this.sizeFactor, 0, Math.PI * 2);
+            ctx.save();
+            ctx.globalAlpha = config.opacity * this.opacityFactor;
+            ctx.fillStyle = this.rgbString;
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    function initParticles() {
+        if (animationId) cancelAnimationFrame(animationId);
+        particlesArray = [];
+        canvas.width = image.width;
+        canvas.height = image.height;
+
+        ctx.drawImage(image, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const step = Math.floor(config.density);
+        for (let y = 0; y < canvas.height; y += step) {
+            for (let x = 0; x < canvas.width; x += step) {
+                const index = (y * canvas.width + x) * 4;
+                const r = data[index];
+                const g = data[index + 1];
+                const b = data[index + 2];
+                const a = data[index + 3];
+                if (a > 128) {
+                    particlesArray.push(new Particle(x, y, r, g, b));
+                }
+            }
+        }
+        animate();
+    }
+
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let i = 0; i < particlesArray.length; i++) {
+            particlesArray[i].update();
+            particlesArray[i].draw();
+        }
+        animationId = requestAnimationFrame(animate);
+    }
+
+    image.addEventListener('load', () => {
+        const containerRatio = window.innerWidth / window.innerHeight;
+        const imageRatio = image.width / image.height;
+        if (containerRatio > imageRatio) {
+             canvas.style.height = '90vh';
+             canvas.style.width = 'auto';
+        } else {
+             canvas.style.width = '90vw';
+             canvas.style.height = 'auto';
+        }
+        initParticles();
+    });
+</script>
+</body>
+</html>
