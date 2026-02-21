@@ -9,11 +9,20 @@ export default defineSchema({
     email: v.optional(v.string()),
     name: v.optional(v.string()),
     age: v.optional(v.number()),
+    bio: v.optional(v.string()),
+    neighborhood: v.optional(v.string()),
     onboardingComplete: v.optional(v.boolean()),
     calendarConnected: v.optional(v.boolean()),
     calendarRefreshToken: v.optional(v.string()),
     manualAvailability: v.optional(v.array(v.string())),
-  }).index("by_email", ["email"]),
+    profileImageId: v.optional(v.id("_storage")),
+    username: v.optional(v.string()),
+    hostingWillingness: v.optional(
+      v.union(v.literal("willing"), v.literal("not_willing"), v.literal("depends"))
+    ),
+  })
+    .index("by_email", ["email"])
+    .index("by_username", ["username"]),
 
   interests: defineTable({
     userId: v.id("users"),
@@ -31,7 +40,9 @@ export default defineSchema({
       v.literal("inferred")
     ),
     isActive: v.boolean(),
-  }).index("by_userId", ["userId"]),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_canonicalValue", ["canonicalValue"]),
 
   vocab: defineTable({
     term: v.string(),
@@ -55,6 +66,7 @@ export default defineSchema({
     hostRequired: v.boolean(),
     minAttendees: v.number(),
     eventSchema: v.optional(v.any()),
+    imageStorageId: v.optional(v.id("_storage")),
   }).index("by_name", ["name"]),
 
   events: defineTable({
@@ -71,7 +83,9 @@ export default defineSchema({
     matchReason: v.string(),
     hostUserId: v.optional(v.id("users")),
     rsvpDeadline: v.optional(v.number()),
-  }).index("by_status", ["status"]),
+  })
+    .index("by_status", ["status"])
+    .index("by_eventTypeId", ["eventTypeId"]),
 
   eventGauges: defineTable({
     userId: v.id("users"),
@@ -94,12 +108,14 @@ export default defineSchema({
     .index("by_eventId", ["eventId"]),
 
   venues: defineTable({
-    googlePlaceId: v.string(),
+    mapboxId: v.optional(v.string()),
     name: v.string(),
     address: v.string(),
     venueType: v.string(),
     isPrivateHome: v.boolean(),
     hostUserId: v.optional(v.id("users")),
+    lat: v.optional(v.number()),
+    lng: v.optional(v.number()),
   }),
 
   friends: defineTable({
@@ -133,4 +149,29 @@ export default defineSchema({
     eventId: v.id("events"),
     createdAt: v.number(),
   }).index("by_eventId", ["eventId"]),
+
+  ideateTraces: defineTable({
+    userId: v.id("users"),
+    sessionId: v.string(),
+    traceType: v.union(
+      v.literal("searching_people"),
+      v.literal("found_match"),
+      v.literal("pinging_user"),
+      v.literal("searching_venue"),
+      v.literal("found_venue"),
+      v.literal("summary")
+    ),
+    content: v.string(),
+    metadata: v.optional(
+      v.object({
+        matchedCount: v.optional(v.number()),
+        eventTypeName: v.optional(v.string()),
+        venueName: v.optional(v.string()),
+        venueLocation: v.optional(
+          v.object({ lat: v.number(), lng: v.number() })
+        ),
+      })
+    ),
+    timestamp: v.number(),
+  }).index("by_userId_sessionId", ["userId", "sessionId"]),
 });

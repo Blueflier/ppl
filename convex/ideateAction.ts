@@ -4,37 +4,37 @@ import Anthropic from "@anthropic-ai/sdk";
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { internal, api } from "./_generated/api";
+import {
+  VENUE_SUGGESTIONS,
+  matchInterestToEventType,
+} from "./matchingUtils";
 
 const SESSION_ID = "main";
 
-const SYSTEM_PROMPT = `You are ppl's ideation assistant — a warm, curious conversationalist helping people in San Francisco discover what they're really into so we can match them with the right people and events.
+const SYSTEM_PROMPT = `You're a chill concierge connecting people in SF. Ultra casual, brief.
 
-Your job:
-- Be warm, curious, and concise (2-4 sentences per reply).
-- Ask follow-up questions about WHY they enjoy things, not just what.
-- Surface deeper motivations: "What draws you to that?" "What's the best part?"
-- When you're confident about an interest, extract it as structured JSON in a fenced block.
+CORE RULE: Extract interests fast. Don't interrogate.
+- Clear interest ("i like basketball") → extract immediately, say "Nice, got it! What else?"
+- Ambiguous ("i like jazz") → ONE follow-up max: "Listening or playing?" → then extract
+- NEVER ask about: skill level, experience, equipment, logistics, hosting
+- After extracting, always nudge for the next interest
 
-To extract interests, include a fenced block like this in your response:
+Follow-up triggers (ONLY these warrant a question):
+- Activity could mean very different event types (jazz listening vs jazz playing)
+- Group size matters for the event format (pickup basketball vs 3v3)
+- That's it. Everything else, just extract and move on.
+
+When you understand a clear interest, quietly extract it (never mention this to the user):
 \`\`\`interests
 [{"category":"hobby","canonicalValue":"jazz piano","rawValue":"playing jazz piano"}]
 \`\`\`
+Categories: hobby, problem, learning, skill. Only extract when specific enough. canonicalValue=short lowercase. Skip already-known interests.
 
-Categories: hobby, problem, learning, skill
-- hobby: things they do for fun
-- problem: problems they want to solve or causes they care about
-- learning: things they want to learn
-- skill: skills they have and could share
-
-Rules:
-- Only extract when you have enough context (don't extract from vague mentions).
-- canonicalValue should be a short, normalized form (lowercase, no articles).
-- rawValue should be close to what the user actually said.
-- You can extract multiple interests in one block.
-- Don't re-extract interests the user already has (listed below).
-- For returning users, notice category gaps and gently probe.
-- Never mention the JSON extraction to the user — keep it invisible.
-- Keep conversation natural. You're a friend, not a form.`;
+When the conversation gets specific enough that someone mentions concrete activities (like hosting dinners, having space, organizing meetups), naturally ask if they'd be open to hosting something. Based on their answer, extract:
+\`\`\`hosting
+{"willingness":"willing"}
+\`\`\`
+willingness values: "willing", "not_willing", "depends". Only extract once per conversation. Don't force it — only ask when it flows naturally.`;
 
 function buildMessages(
   history: { role: "user" | "assistant"; content: string }[],
@@ -60,12 +60,16 @@ function parseResponse(text: string): {
     canonicalValue: string;
     rawValue: string;
   }[];
+  hosting: { willingness: "willing" | "not_willing" | "depends" } | null;
 } {
   const interestBlocks: {
     category: "hobby" | "problem" | "learning" | "skill";
     canonicalValue: string;
     rawValue: string;
   }[] = [];
+  let hosting: { willingness: "willing" | "not_willing" | "depends" } | null =
+    null;
+
   const displayText = text
     .replace(/```interests\s*([\s\S]*?)```/g, (_match, jsonStr: string) => {
       try {
@@ -78,9 +82,20 @@ function parseResponse(text: string): {
       }
       return "";
     })
+    .replace(/```hosting\s*([\s\S]*?)```/g, (_match, jsonStr: string) => {
+      try {
+        const parsed = JSON.parse(jsonStr.trim());
+        if (parsed && parsed.willingness) {
+          hosting = parsed;
+        }
+      } catch {
+        // ignore malformed JSON
+      }
+      return "";
+    })
     .trim();
 
-  return { displayText, interests: interestBlocks };
+  return { displayText, interests: interestBlocks, hosting };
 }
 
 export const sendMessage = action({
@@ -115,20 +130,28 @@ export const sendMessage = action({
     const client = new Anthropic();
     const response = await client.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 512,
+      max_tokens: 800,
       system,
       messages,
     });
 
     const rawText =
       response.content[0].type === "text" ? response.content[0].text : "";
-    const { displayText, interests } = parseResponse(rawText);
+    const { displayText, interests, hosting } = parseResponse(rawText);
 
     // Save extracted interests
     if (interests.length > 0) {
       await ctx.runMutation(internal.ideate.saveIdeateInterests, {
         userId: user._id,
         interests,
+      });
+    }
+
+    // Save hosting willingness
+    if (hosting) {
+      await ctx.runMutation(internal.users.updateHostingWillingness, {
+        userId: user._id,
+        hostingWillingness: hosting.willingness,
       });
     }
 
@@ -144,6 +167,98 @@ export const sendMessage = action({
           : undefined,
       timestamp: Date.now(),
     });
+
+    // ── Generate real-data traces for extracted interests ──
+    if (interests.length > 0) {
+      // Clear old traces before writing new batch
+      await ctx.runMutation(internal.ideate.clearTraces, {
+        userId: user._id,
+        sessionId: SESSION_ID,
+      });
+
+      // Fetch real gauge data
+      const eventTypeGauges = await ctx.runQuery(
+        internal.eventTypes.getGaugeCountsByEventType
+      );
+
+      let traceDelay = 0;
+      for (const interest of interests) {
+        const match = matchInterestToEventType(
+          interest.canonicalValue,
+          eventTypeGauges
+        );
+
+        // Trace 1: searching_people
+        await ctx.runMutation(internal.ideate.saveIdeateTrace, {
+          userId: user._id,
+          sessionId: SESSION_ID,
+          traceType: "searching_people",
+          content: `Scanning SF for ${interest.canonicalValue} people...`,
+          metadata: { eventTypeName: match?.data.displayName },
+          timestamp: Date.now() + traceDelay,
+        });
+        traceDelay += 400;
+
+        if (match && match.data.yesCount > 0) {
+          // Trace 2: found_match (with real count)
+          await ctx.runMutation(internal.ideate.saveIdeateTrace, {
+            userId: user._id,
+            sessionId: SESSION_ID,
+            traceType: "found_match",
+            content: `Found ${match.data.yesCount} people interested in ${match.data.displayName}`,
+            metadata: {
+              matchedCount: match.data.yesCount,
+              eventTypeName: match.data.displayName,
+            },
+            timestamp: Date.now() + traceDelay,
+          });
+          traceDelay += 400;
+
+          // Find venue type for this event type
+          const allEventTypes = await ctx.runQuery(api.eventTypes.getEventTypes);
+          const etData = allEventTypes.find(
+            (et: { name: string }) => et.name === match.etName
+          );
+          const venueType = etData?.venueType;
+          const venueInfo = venueType
+            ? VENUE_SUGGESTIONS[venueType]
+            : null;
+
+          if (venueInfo) {
+            // Trace 3: searching_venue
+            await ctx.runMutation(internal.ideate.saveIdeateTrace, {
+              userId: user._id,
+              sessionId: SESSION_ID,
+              traceType: "searching_venue",
+              content: `Looking for ${venueInfo.desc}...`,
+              metadata: { eventTypeName: match.data.displayName },
+              timestamp: Date.now() + traceDelay,
+            });
+            traceDelay += 400;
+
+            // Trace 4: found_venue
+            await ctx.runMutation(internal.ideate.saveIdeateTrace, {
+              userId: user._id,
+              sessionId: SESSION_ID,
+              traceType: "found_venue",
+              content: `Found ${venueInfo.name}`,
+              metadata: {
+                venueName: venueInfo.name,
+                venueLocation: { lat: venueInfo.lat, lng: venueInfo.lng },
+                eventTypeName: match.data.displayName,
+              },
+              timestamp: Date.now() + traceDelay,
+            });
+            traceDelay += 400;
+          }
+        }
+      }
+    }
+
+    // ── Run matching engine to create events from interests ──
+    if (interests.length > 0) {
+      await ctx.runAction(internal.matchAndCreateEvents.matchAndCreateEvents, {});
+    }
 
     return {
       message: displayText,

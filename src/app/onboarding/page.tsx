@@ -49,6 +49,7 @@ export default function OnboardingPage() {
     } else {
       const interests = Object.entries(updated).flatMap(([id, vals]) => {
         const q = ONBOARDING_QUESTIONS.find((q) => q.id === id)!;
+        if (q.savesAsInterest === false) return [];
         return vals.map((v) => ({
           category: q.category,
           canonicalValue: v.toLowerCase(),

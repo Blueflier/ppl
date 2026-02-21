@@ -4,6 +4,7 @@ export interface OnboardingQuestion {
   type: "bubble" | "text";
   options?: string[];
   category: "hobby" | "problem" | "learning" | "skill";
+  savesAsInterest?: boolean;
 }
 
 export const ONBOARDING_QUESTIONS: OnboardingQuestion[] = [
@@ -13,6 +14,7 @@ export const ONBOARDING_QUESTIONS: OnboardingQuestion[] = [
     type: "bubble",
     options: ["Yes", "No"],
     category: "hobby",
+    savesAsInterest: false,
   },
   {
     id: "talking",
@@ -42,6 +44,7 @@ export const ONBOARDING_QUESTIONS: OnboardingQuestion[] = [
       "Not actively",
     ],
     category: "learning",
+    savesAsInterest: false,
   },
   {
     id: "want_more",
@@ -49,6 +52,7 @@ export const ONBOARDING_QUESTIONS: OnboardingQuestion[] = [
     type: "bubble",
     options: ["New friends", "Collaborators", "Community", "All of the above"],
     category: "skill",
+    savesAsInterest: false,
   },
   {
     id: "show_up",
@@ -61,6 +65,7 @@ export const ONBOARDING_QUESTIONS: OnboardingQuestion[] = [
       "Good people will be there",
     ],
     category: "hobby",
+    savesAsInterest: false,
   },
   {
     id: "bucket_list",

@@ -42,8 +42,8 @@ export function QuestionStep({ question, onNext, initialSelected }: QuestionStep
   };
 
   return (
-    <div className="flex min-h-[320px] flex-col gap-4 rounded-xl border border-zinc-200 p-6 dark:border-zinc-700">
-      <h2 className="text-2xl font-bold leading-tight text-black dark:text-white">{question.question}</h2>
+    <div className="flex min-h-[320px] flex-col gap-4 rounded-xl border border-gray-200 p-6">
+      <h2 className="text-2xl font-bold leading-tight text-black">{question.question}</h2>
 
       {isBinary ? (
         <>
@@ -72,7 +72,7 @@ export function QuestionStep({ question, onNext, initialSelected }: QuestionStep
           <button
             onClick={() => onNext(selected)}
             disabled={selected.length === 0}
-            className="rounded-lg bg-black py-3 text-white font-medium disabled:opacity-40 dark:bg-white dark:text-black"
+            className="rounded-lg bg-sage py-3 text-white font-medium disabled:opacity-40"
           >
             Continue
           </button>
@@ -87,7 +87,7 @@ export function QuestionStep({ question, onNext, initialSelected }: QuestionStep
           <button
             onClick={handleNext}
             disabled={!canContinue}
-            className="rounded-lg bg-black py-3 text-white font-medium disabled:opacity-40 dark:bg-white dark:text-black"
+            className="rounded-lg bg-sage py-3 text-white font-medium disabled:opacity-40"
           >
             Continue
           </button>
@@ -100,12 +100,12 @@ export function QuestionStep({ question, onNext, initialSelected }: QuestionStep
             value={textValue}
             onChange={(e) => setTextValue(e.target.value)}
             placeholder="Type your answer..."
-            className="rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm text-black outline-none resize-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+            className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-black outline-none resize-none focus:border-sage"
           />
           <button
             onClick={handleNext}
             disabled={!canContinue}
-            className="rounded-lg bg-black py-3 text-white font-medium disabled:opacity-40 dark:bg-white dark:text-black"
+            className="rounded-lg bg-sage py-3 text-white font-medium disabled:opacity-40"
           >
             Continue
           </button>

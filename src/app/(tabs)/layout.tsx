@@ -1,9 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { BottomTabBar } from "@/components/ui/BottomTabBar";
+import { SideNav } from "@/components/ui/BottomTabBar";
 
 export default function TabsLayout({
   children,
@@ -11,7 +11,9 @@ export default function TabsLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { isAuthed, isLoading, onboardingComplete } = useAuth();
+  const isFullWidth = pathname === "/ideate" || pathname.startsWith("/explore") || pathname === "/me";
 
   useEffect(() => {
     if (isLoading) return;
@@ -25,15 +27,17 @@ export default function TabsLayout({
   if (isLoading || !isAuthed || !onboardingComplete) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-300 border-t-black dark:border-zinc-600 dark:border-t-white" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-sage/30 border-t-sage" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen pb-20">
-      {children}
-      <BottomTabBar />
+    <div className="min-h-screen flex">
+      <SideNav />
+      <div className={`ml-16 flex-1 ${isFullWidth ? "" : "max-w-2xl mx-auto"}`}>
+        {children}
+      </div>
     </div>
   );
 }

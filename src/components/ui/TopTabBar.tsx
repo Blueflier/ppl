@@ -12,7 +12,7 @@ export function TopTabBar() {
   const pathname = usePathname();
 
   return (
-    <div className="flex border-b border-zinc-200 dark:border-zinc-800">
+    <div className="flex border-b border-gray-200">
       {SUB_TABS.map((tab) => {
         const isActive = pathname === tab.path;
         return (
@@ -21,8 +21,8 @@ export function TopTabBar() {
             href={tab.path}
             className={`flex-1 py-3 text-center text-sm font-medium transition-colors ${
               isActive
-                ? "border-b-2 border-black text-black dark:border-white dark:text-white"
-                : "text-zinc-400"
+                ? "border-b-2 border-sage text-sage"
+                : "text-gray-400"
             }`}
           >
             {tab.label}
