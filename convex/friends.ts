@@ -4,16 +4,20 @@ import { getAuthedUserId } from "./authHelpers";
 
 export const sendFriendRequest = mutation({
   args: { username: v.string() },
+  returns: v.object({
+    success: v.boolean(),
+    error: v.optional(v.string()),
+  }),
   handler: async (ctx, { username }) => {
     const userId = await getAuthedUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    if (!userId) return { success: false, error: "Not authenticated" };
 
     const target = await ctx.db
       .query("users")
       .withIndex("by_username", (q) => q.eq("username", username.toLowerCase()))
       .first();
-    if (!target) throw new Error("User not found");
-    if (target._id === userId) throw new Error("Cannot add yourself");
+    if (!target) return { success: false, error: "User not found" };
+    if (target._id === userId) return { success: false, error: "Cannot add yourself" };
 
     // Check for existing friendship in either direction
     const existing1 = await ctx.db
@@ -21,14 +25,14 @@ export const sendFriendRequest = mutation({
       .withIndex("by_requesterId", (q) => q.eq("requesterId", userId))
       .filter((q) => q.eq(q.field("receiverId"), target._id))
       .first();
-    if (existing1) throw new Error("Friend request already exists");
+    if (existing1) return { success: false, error: "Friend request already sent" };
 
     const existing2 = await ctx.db
       .query("friends")
       .withIndex("by_requesterId", (q) => q.eq("requesterId", target._id))
       .filter((q) => q.eq(q.field("receiverId"), userId))
       .first();
-    if (existing2) throw new Error("Friend request already exists");
+    if (existing2) return { success: false, error: "They already sent you a request" };
 
     await ctx.db.insert("friends", {
       requesterId: userId,
@@ -36,6 +40,7 @@ export const sendFriendRequest = mutation({
       status: "pending",
       createdAt: Date.now(),
     });
+    return { success: true };
   },
 });
 

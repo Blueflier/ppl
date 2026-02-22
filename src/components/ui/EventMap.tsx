@@ -53,7 +53,7 @@ export function EventMap({ selectedEventId, onSelectEvent, visibleEventIds }: Ev
         zoom: 12,
       }}
       style={{ width: "100%", height: "100%" }}
-      mapStyle="mapbox://styles/mapbox/light-v11"
+      mapStyle="mapbox://styles/mapbox/streets-v12"
     >
       {events?.map((event) => {
         const isSelected = selectedEventId === event._id;

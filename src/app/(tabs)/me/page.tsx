@@ -184,11 +184,11 @@ export default function MePage() {
   const handleSendFriendRequest = async () => {
     if (!friendUsername.trim()) return;
     setFriendError("");
-    try {
-      await sendFriendRequest({ username: friendUsername.trim() });
+    const result = await sendFriendRequest({ username: friendUsername.trim() });
+    if (result.success) {
       setFriendUsername("");
-    } catch (e: any) {
-      setFriendError(e.message || "Failed to send request");
+    } else {
+      setFriendError(result.error || "Failed to send request");
     }
   };
 
