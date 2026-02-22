@@ -80,6 +80,7 @@ export const generateAllEventImages = internalAction({
         await ctx.runAction(internal.generateEventImages.generateEventImage, {
           eventTypeId: et._id,
           displayName: et.displayName,
+          activity: et.name.replace(/_/g, " "),
         });
         // Brief pause between requests to avoid rate limits
         await new Promise((resolve) => setTimeout(resolve, 1000));

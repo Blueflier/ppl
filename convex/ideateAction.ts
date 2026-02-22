@@ -302,6 +302,7 @@ export const sendMessage = action({
             await ctx.runAction(internal.generateEventImages.generateEventImage, {
               eventTypeId: eventTypeId as any,
               displayName,
+              activity: interest.canonicalValue,
             });
           } catch (e) {
             console.warn(`Image generation failed for "${displayName}":`, e);
