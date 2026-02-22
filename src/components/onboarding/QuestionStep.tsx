@@ -42,7 +42,7 @@ export function QuestionStep({ question, onNext, initialSelected }: QuestionStep
   };
 
   return (
-    <div className="flex min-h-[320px] flex-col gap-4 rounded-xl border border-gray-200 p-6">
+    <div className="flex flex-col gap-6">
       <h2 className="text-2xl font-bold leading-tight text-black">{question.question}</h2>
 
       {isBinary ? (
@@ -50,20 +50,20 @@ export function QuestionStep({ question, onNext, initialSelected }: QuestionStep
           <div className="flex gap-3">
             <button
               onClick={() => setSelected(["Yes"])}
-              className={`flex-1 rounded-lg py-4 text-lg font-semibold text-white transition-colors ${
+              className={`flex-1 rounded-full py-3.5 text-base font-medium transition-colors ${
                 selected[0] === "Yes"
-                  ? "bg-green-600 ring-2 ring-green-400"
-                  : "bg-green-500 hover:bg-green-600"
+                  ? "bg-sage text-white"
+                  : "bg-gray-100 text-black"
               }`}
             >
               Yes
             </button>
             <button
               onClick={() => setSelected(["No"])}
-              className={`flex-1 rounded-lg py-4 text-lg font-semibold text-white transition-colors ${
+              className={`flex-1 rounded-full py-3.5 text-base font-medium transition-colors ${
                 selected[0] === "No"
-                  ? "bg-red-600 ring-2 ring-red-400"
-                  : "bg-red-500 hover:bg-red-600"
+                  ? "bg-sage text-white"
+                  : "bg-gray-100 text-black"
               }`}
             >
               No
@@ -72,7 +72,7 @@ export function QuestionStep({ question, onNext, initialSelected }: QuestionStep
           <button
             onClick={() => onNext(selected)}
             disabled={selected.length === 0}
-            className="rounded-lg bg-sage py-3 text-white font-medium disabled:opacity-40"
+            className="rounded-full bg-sage py-3.5 text-white font-medium disabled:opacity-30"
           >
             Continue
           </button>
@@ -87,7 +87,7 @@ export function QuestionStep({ question, onNext, initialSelected }: QuestionStep
           <button
             onClick={handleNext}
             disabled={!canContinue}
-            className="rounded-lg bg-sage py-3 text-white font-medium disabled:opacity-40"
+            className="rounded-full bg-sage py-3.5 text-white font-medium disabled:opacity-30"
           >
             Continue
           </button>
@@ -100,12 +100,12 @@ export function QuestionStep({ question, onNext, initialSelected }: QuestionStep
             value={textValue}
             onChange={(e) => setTextValue(e.target.value)}
             placeholder="Type your answer..."
-            className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-black outline-none resize-none focus:border-sage"
+            className="rounded-xl border border-gray-100 bg-white px-4 py-3 text-sm text-black outline-none resize-none focus:border-sage"
           />
           <button
             onClick={handleNext}
             disabled={!canContinue}
-            className="rounded-lg bg-sage py-3 text-white font-medium disabled:opacity-40"
+            className="rounded-full bg-sage py-3.5 text-white font-medium disabled:opacity-30"
           >
             Continue
           </button>

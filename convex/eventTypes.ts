@@ -19,6 +19,23 @@ export const getEventTypes = query({
   },
 });
 
+export const getEventTypesByIds = query({
+  args: { ids: v.array(v.id("eventTypes")) },
+  handler: async (ctx, { ids }) => {
+    const results = await Promise.all(
+      ids.map(async (id) => {
+        const et = await ctx.db.get(id);
+        if (!et) return null;
+        const imageUrl = et.imageStorageId
+          ? await ctx.storage.getUrl(et.imageStorageId)
+          : null;
+        return { ...et, imageUrl };
+      })
+    );
+    return results.filter((r) => r !== null);
+  },
+});
+
 export const setEventTypeImage = internalMutation({
   args: {
     eventTypeId: v.id("eventTypes"),
@@ -230,13 +247,25 @@ export const getUserIdeatedEventTypes = query({
 // Given a list of canonical interest values, return matching eventTypes
 // with gauge counts, active event info, and which interests triggered the match
 export const getMatchingEventTypes = query({
-  args: { interests: v.array(v.string()) },
-  handler: async (ctx, { interests }) => {
-    if (interests.length === 0) return [];
+  args: {
+    interests: v.array(v.string()),
+    eventTypeNames: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, { interests, eventTypeNames }) => {
+    if (interests.length === 0 && (!eventTypeNames || eventTypeNames.length === 0)) return [];
 
     // Map interests to eventType names, tracking which interests matched
     const etToInterests = new Map<string, string[]>();
     const allEts = await ctx.db.query("eventTypes").collect();
+
+    // Include event types matched by name (from Claude semantic matching)
+    if (eventTypeNames) {
+      for (const name of eventTypeNames) {
+        if (!etToInterests.has(name)) {
+          etToInterests.set(name, []);
+        }
+      }
+    }
 
     for (const interest of interests) {
       const cv = interest.toLowerCase();

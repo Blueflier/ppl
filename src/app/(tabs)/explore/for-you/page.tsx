@@ -151,6 +151,17 @@ export default function ForYouPage() {
     </div>
   );
 
+  if (eventTypes.length === 0 && happeningSoon.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+        <p className="text-lg font-semibold text-gray-600">No events yet</p>
+        <p className="mt-2 text-sm text-gray-400">
+          Chat in Ideate to suggest events and we&apos;ll find people to join!
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-3 p-4">
       {/* Happening Soon */}
@@ -184,26 +195,35 @@ export default function ForYouPage() {
         </>
       )}
 
-      {/* Gauging Section */}
+      {/* Gauging Section — matched first, then ungauged, then gauged */}
       <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
         What interests you?
       </h2>
-      {eventTypes.map((eventType) => (
-        <GaugingCard
-          key={eventType._id}
-          displayName={eventType.displayName}
-          imageUrl={eventType.imageUrl}
-          currentResponse={gaugeMap.get(eventType._id) ?? null}
-          href={`/event-type/${eventType._id}`}
-          matchReason={etMatchReasons.get(eventType.name)}
-          onYes={() =>
-            saveGauge({ eventTypeId: eventType._id, response: "yes" })
-          }
-          onNo={() =>
-            saveGauge({ eventTypeId: eventType._id, response: "no" })
-          }
-        />
-      ))}
+      {[...eventTypes]
+        .sort((a, b) => {
+          const aMatch = etMatchReasons.has(a.name) ? 1 : 0;
+          const bMatch = etMatchReasons.has(b.name) ? 1 : 0;
+          if (aMatch !== bMatch) return bMatch - aMatch;
+          const aGauged = gaugeMap.has(a._id) ? 1 : 0;
+          const bGauged = gaugeMap.has(b._id) ? 1 : 0;
+          return aGauged - bGauged;
+        })
+        .map((eventType) => (
+          <GaugingCard
+            key={eventType._id}
+            displayName={eventType.displayName}
+            imageUrl={eventType.imageUrl}
+            currentResponse={gaugeMap.get(eventType._id) ?? null}
+            href={`/event-type/${eventType._id}`}
+            matchReason={etMatchReasons.get(eventType.name)}
+            onYes={() =>
+              saveGauge({ eventTypeId: eventType._id, response: "yes" })
+            }
+            onNo={() =>
+              saveGauge({ eventTypeId: eventType._id, response: "no" })
+            }
+          />
+        ))}
 
       {/* Passed */}
       {passed.length > 0 && (

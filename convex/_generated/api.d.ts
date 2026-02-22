@@ -24,6 +24,7 @@ import type * as interests from "../interests.js";
 import type * as matchAndCreateEvents from "../matchAndCreateEvents.js";
 import type * as matchAndCreateEventsHelpers from "../matchAndCreateEventsHelpers.js";
 import type * as matchingUtils from "../matchingUtils.js";
+import type * as onboardingEvents from "../onboardingEvents.js";
 import type * as rsvps from "../rsvps.js";
 import type * as seed from "../seed.js";
 import type * as seedFriends from "../seedFriends.js";
@@ -54,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   matchAndCreateEvents: typeof matchAndCreateEvents;
   matchAndCreateEventsHelpers: typeof matchAndCreateEventsHelpers;
   matchingUtils: typeof matchingUtils;
+  onboardingEvents: typeof onboardingEvents;
   rsvps: typeof rsvps;
   seed: typeof seed;
   seedFriends: typeof seedFriends;

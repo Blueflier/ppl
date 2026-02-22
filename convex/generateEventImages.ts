@@ -34,7 +34,7 @@ export const generateEventImage = internalAction({
               content: [
                 {
                   type: "text",
-                  text: `A clean flat-style illustration of objects and items associated with ${subject} — arranged as a still life or top-down flat lay. Show only physical objects like equipment, tools, food, gear, etc. No people, no faces, no hands, no text, no letters, no words. Soft pastel background, warm lighting, minimal and modern aesthetic.`,
+                  text: `Pointillism style painting with bright vivid colors. A person doing ${subject}. If there is a key object or tool involved, show the person actively using it. If there is no object (like dancing or singing), just show the person performing the activity. One person, no text, no letters, no words. Bright colorful background, energetic and joyful mood.`,
                 },
               ],
             },

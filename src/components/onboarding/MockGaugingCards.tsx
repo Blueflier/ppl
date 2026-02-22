@@ -1,43 +1,48 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { GaugingCard } from "@/components/ui/GaugingCard";
 
-const MOCK_EVENTS = [
-  "Jazz Jam",
-  "3v3 Basketball",
-  "Founder Roundtable",
-  "Board Game Night",
-  "Group Hike",
-];
-
-interface MockGaugingCardsProps {
-  onComplete: (responses: Record<string, "yes" | "no">) => void;
+interface GaugingEventType {
+  _id: string;
+  displayName: string;
+  imageUrl: string | null;
 }
 
-export function MockGaugingCards({ onComplete }: MockGaugingCardsProps) {
-  const [responses, setResponses] = useState<Record<string, "yes" | "no">>({});
+interface MockGaugingCardsProps {
+  eventTypes: GaugingEventType[];
+  onGauge: (eventTypeId: string, response: "yes" | "no") => void;
+  onComplete: () => void;
+}
+
+export function MockGaugingCards({ eventTypes, onGauge, onComplete }: MockGaugingCardsProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const handleResponse = (response: "yes" | "no") => {
-    const event = MOCK_EVENTS[currentIndex];
-    const updated = { ...responses, [event]: response };
-    setResponses(updated);
+  useEffect(() => {
+    if (eventTypes.length === 0) {
+      onComplete();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    if (currentIndex < MOCK_EVENTS.length - 1) {
+  if (eventTypes.length === 0) return null;
+
+  const handleResponse = (response: "yes" | "no") => {
+    onGauge(eventTypes[currentIndex]._id, response);
+    if (currentIndex < eventTypes.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      onComplete(updated);
+      onComplete();
     }
   };
 
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-zinc-500">
-        {currentIndex + 1} of {MOCK_EVENTS.length}
+        {currentIndex + 1} of {eventTypes.length}
       </p>
       <GaugingCard
-        displayName={MOCK_EVENTS[currentIndex]}
+        displayName={eventTypes[currentIndex].displayName}
+        imageUrl={eventTypes[currentIndex].imageUrl}
         onYes={() => handleResponse("yes")}
         onNo={() => handleResponse("no")}
       />

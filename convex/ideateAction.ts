@@ -204,19 +204,6 @@ export const sendMessage = action({
       });
     }
 
-    // Save assistant message
-    await ctx.runMutation(internal.ideate.saveIdeateLog, {
-      userId: user._id,
-      sessionId: SESSION_ID,
-      role: "assistant",
-      content: displayText,
-      extractedInterests:
-        interests.length > 0
-          ? interests.map((i) => i.canonicalValue)
-          : undefined,
-      timestamp: Date.now(),
-    });
-
     // ── Process extracted interests: gauge, create event types, check thresholds ──
     if (interests.length > 0) {
       // Clear old traces before writing new batch
@@ -240,10 +227,56 @@ export const sendMessage = action({
         });
       }
 
+      // ── Semantic matching via Claude ──
+      // One fast call to map all extracted interests to existing event types
+      const eventTypeEntries = Object.entries(eventTypeGauges).map(
+        ([name, d]) => `${name} (${d.displayName})`
+      );
+      let claudeMatchMap: Record<string, string | null> = {};
+      if (eventTypeEntries.length > 0) {
+        try {
+          const matchResponse = await client.messages.create({
+            model: "claude-haiku-4-5-20251001",
+            max_tokens: 300,
+            messages: [
+              {
+                role: "user",
+                content: `Match each interest to the most semantically related event type. Only match if there's a real connection.
+
+Interests: ${interests.map((i) => i.canonicalValue).join(", ")}
+
+Event types: ${eventTypeEntries.join(", ")}
+
+Return ONLY JSON: {"interest_value": "event_type_name" | null}
+Example: {"rock climbing": "climbing_session", "cooking": "dinner_party", "quantum physics": null}`,
+              },
+            ],
+          });
+          const matchText =
+            matchResponse.content[0].type === "text"
+              ? matchResponse.content[0].text
+              : "";
+          const jsonMatch = matchText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            claudeMatchMap = JSON.parse(jsonMatch[0]);
+          }
+        } catch (e) {
+          console.warn("Claude semantic matching failed, falling back:", e);
+        }
+      }
+
+      // Collect matched event type names for storage
+      const matchedEventTypeNames: string[] = [];
+
       let traceDelay = 0;
       for (const interest of interests) {
         const cv = interest.canonicalValue.toLowerCase();
-        const match = matchInterestToEventType(cv, eventTypeGauges);
+        // Use Claude's semantic match first, fall back to INTEREST_MAP
+        const claudeMatchName = claudeMatchMap[cv] ?? claudeMatchMap[interest.canonicalValue];
+        const match =
+          claudeMatchName && eventTypeGauges[claudeMatchName]
+            ? { etName: claudeMatchName, data: eventTypeGauges[claudeMatchName] }
+            : matchInterestToEventType(cv, eventTypeGauges);
 
         // Trace: searching
         await ctx.runMutation(internal.ideate.saveIdeateTrace, {
@@ -257,6 +290,7 @@ export const sendMessage = action({
         traceDelay += 400;
 
         if (match) {
+          matchedEventTypeNames.push(match.etName);
           // Known interest — auto-gauge "yes" and show trace
           await ctx.runMutation(
             internal.matchAndCreateEventsHelpers.autoGaugeYes,
@@ -290,6 +324,7 @@ export const sendMessage = action({
             internal.matchAndCreateEventsHelpers.createEventType,
             { name: etName, displayName, venueType, description: suggestion?.description }
           );
+          matchedEventTypeNames.push(etName);
 
           // Auto-gauge "yes" for this user
           await ctx.runMutation(
@@ -325,6 +360,29 @@ export const sendMessage = action({
         internal.matchAndCreateEvents.matchAndCreateEvents,
         {}
       );
+
+      // Save assistant message (after processing so we can include matchedEventTypeNames)
+      await ctx.runMutation(internal.ideate.saveIdeateLog, {
+        userId: user._id,
+        sessionId: SESSION_ID,
+        role: "assistant",
+        content: displayText,
+        extractedInterests: interests.map((i) => i.canonicalValue),
+        matchedEventTypeNames:
+          matchedEventTypeNames.length > 0
+            ? matchedEventTypeNames
+            : undefined,
+        timestamp: Date.now(),
+      });
+    } else {
+      // No interests extracted — save assistant message without matches
+      await ctx.runMutation(internal.ideate.saveIdeateLog, {
+        userId: user._id,
+        sessionId: SESSION_ID,
+        role: "assistant",
+        content: displayText,
+        timestamp: Date.now(),
+      });
     }
 
     return {

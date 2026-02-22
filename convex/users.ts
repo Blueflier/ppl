@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, internalMutation, query } from "./_generated/server";
+import { mutation, internalMutation, internalQuery, query } from "./_generated/server";
 import { getAuthedUserId } from "./authHelpers";
 
 export const getUser = query({
@@ -98,6 +98,92 @@ export const updateHostingWillingness = internalMutation({
   },
   handler: async (ctx, { userId, hostingWillingness }) => {
     await ctx.db.patch(userId, { hostingWillingness });
+  },
+});
+
+// Diagnostic: find users by email and check auth accounts
+export const debugUserLookup = internalMutation({
+  args: { email: v.string() },
+  handler: async (ctx, { email }) => {
+    // Find users with this email
+    const byEmail = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .collect();
+    console.log(`Users with email "${email}":`, byEmail.map(u => ({
+      _id: u._id,
+      name: u.name,
+      email: u.email,
+      username: u.username,
+      onboardingComplete: u.onboardingComplete,
+    })));
+
+    // Check authAccounts for this email
+    const authAccounts = await ctx.db.query("authAccounts").collect();
+    const matching = authAccounts.filter((a: any) =>
+      a.providerAccountId?.toLowerCase() === email.toLowerCase()
+    );
+    console.log(`Auth accounts for "${email}":`, matching.map((a: any) => ({
+      _id: a._id,
+      userId: a.userId,
+      provider: a.provider,
+      providerAccountId: a.providerAccountId,
+    })));
+
+    // Also check the specific user ID
+    const targetUser = await ctx.db.get("k97cjnkznshqkhr7es9zqkmv8s81kegm" as any);
+    console.log(`User k97c...:`, targetUser ? {
+      _id: targetUser._id,
+      name: (targetUser as any).name,
+      email: (targetUser as any).email,
+      onboardingComplete: (targetUser as any).onboardingComplete,
+    } : "NOT FOUND");
+
+    // Count friends for each matching user
+    for (const u of byEmail) {
+      const asReq = await ctx.db.query("friends")
+        .withIndex("by_requesterId", (q) => q.eq("requesterId", u._id))
+        .collect();
+      const asRec = await ctx.db.query("friends")
+        .withIndex("by_receiverId", (q) => q.eq("receiverId", u._id))
+        .collect();
+      console.log(`Friends for ${u._id}: ${asReq.length + asRec.length} (req: ${asReq.length}, rec: ${asRec.length})`);
+    }
+
+    // Count friends for k97c user
+    const k97cId = "k97cjnkznshqkhr7es9zqkmv8s81kegm" as any;
+    const k97cReq = await ctx.db.query("friends")
+      .withIndex("by_requesterId", (q) => q.eq("requesterId", k97cId))
+      .collect();
+    const k97cRec = await ctx.db.query("friends")
+      .withIndex("by_receiverId", (q) => q.eq("receiverId", k97cId))
+      .collect();
+    console.log(`Friends for k97c...: ${k97cReq.length + k97cRec.length} (req: ${k97cReq.length}, rec: ${k97cRec.length})`);
+
+    // Check how many friends are "accepted"
+    const allFriends = [...k97cReq, ...k97cRec];
+    const accepted = allFriends.filter(f => f.status === "accepted");
+    const pending = allFriends.filter(f => f.status === "pending");
+    console.log(`  Accepted: ${accepted.length}, Pending: ${pending.length}`);
+
+    // Check upcoming events
+    const allEvents = await ctx.db.query("events").collect();
+    const upcoming = allEvents.filter(
+      (e) => e.status === "pending_rsvp" || e.status === "confirmed"
+    );
+    const now = Date.now();
+    console.log(`Total events: ${allEvents.length}`);
+    console.log(`Upcoming (pending_rsvp/confirmed): ${upcoming.length}`);
+    for (const e of upcoming) {
+      const scheduledTime = e.scheduledTime ? new Date(e.scheduledTime).toISOString() : "none";
+      const rsvpDeadline = e.rsvpDeadline ? new Date(e.rsvpDeadline).toISOString() : "none";
+      const isExpired = e.rsvpDeadline && e.rsvpDeadline < now;
+      console.log(`  Event ${e._id}: status=${e.status}, scheduled=${scheduledTime}, deadline=${rsvpDeadline}, expired=${isExpired}`);
+    }
+
+    // Count event types
+    const eventTypes = await ctx.db.query("eventTypes").collect();
+    console.log(`Total event types: ${eventTypes.length}`);
   },
 });
 

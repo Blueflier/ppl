@@ -30,7 +30,7 @@ export function BubbleSelect({
             }}
             className={`rounded-full border px-4 py-2 text-sm font-medium transition-all ${
               isSelected
-                ? "border-blue bg-blue/10 text-blue"
+                ? "border-sage bg-sage/10 text-sage"
                 : "border-gray-200 bg-white text-black"
             }`}
           >

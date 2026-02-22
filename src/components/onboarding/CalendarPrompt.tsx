@@ -26,7 +26,7 @@ export function CalendarPrompt({ onSkip }: CalendarPromptProps) {
       <div className="flex w-full flex-col gap-3">
         <button
           onClick={onSkip}
-          className="rounded-xl bg-black py-3 text-white font-medium dark:bg-white dark:text-black"
+          className="rounded-full bg-sage py-3 text-white font-medium"
         >
           Connect Google Calendar
         </button>

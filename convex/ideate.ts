@@ -113,6 +113,7 @@ export const saveIdeateLog = internalMutation({
     role: v.union(v.literal("user"), v.literal("assistant")),
     content: v.string(),
     extractedInterests: v.optional(v.array(v.string())),
+    matchedEventTypeNames: v.optional(v.array(v.string())),
     timestamp: v.number(),
   },
   handler: async (ctx, args) => {

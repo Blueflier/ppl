@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getAuthedUserId } from "./authHelpers";
+import { INTEREST_MAP } from "./matchingUtils";
 
 export const saveOnboardingInterests = mutation({
   args: {
@@ -30,6 +31,42 @@ export const saveOnboardingInterests = mutation({
         source: "onboarding",
         isActive: true,
       });
+    }
+
+    // Auto-gauge "yes" on event types matching user interests
+    const allEventTypes = await ctx.db.query("eventTypes").collect();
+    const matchedEtIds = new Set<string>();
+
+    for (const interest of interests) {
+      const cv = interest.canonicalValue.toLowerCase();
+      const directMatch = INTEREST_MAP[cv];
+      if (directMatch) {
+        const et = allEventTypes.find((e) => e.name === directMatch);
+        if (et) matchedEtIds.add(et._id);
+      }
+      for (const et of allEventTypes) {
+        const etReadable = et.name.replace(/_/g, " ");
+        if (etReadable.includes(cv) || cv.includes(etReadable)) {
+          matchedEtIds.add(et._id);
+        }
+      }
+    }
+
+    for (const etId of matchedEtIds) {
+      const existing = await ctx.db
+        .query("eventGauges")
+        .withIndex("by_userId_eventTypeId", (q) =>
+          q.eq("userId", userId).eq("eventTypeId", etId as any)
+        )
+        .first();
+      if (!existing) {
+        await ctx.db.insert("eventGauges", {
+          userId,
+          eventTypeId: etId as any,
+          response: "yes",
+          timestamp: Date.now(),
+        });
+      }
     }
   },
 });

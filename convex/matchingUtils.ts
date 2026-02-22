@@ -50,6 +50,13 @@ export const INTEREST_MAP: Record<string, string> = {
   gardening: "garden_meetup",
   brewing: "homebrew_club",
   design: "design_critique",
+  // Broad onboarding categories
+  tech: "hackathon",
+  business: "startup_mixer",
+  sports: "pickup_basketball",
+  science: "hackathon",
+  "pop culture": "trivia_night",
+  philosophy: "book_club",
 };
 
 export const VENUE_SUGGESTIONS: Record<

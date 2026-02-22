@@ -45,8 +45,8 @@ export default function Home() {
 
   useEffect(() => {
     if (isLoading) return;
-    if (isAuthed) {
-      router.replace(onboardingComplete ? "/explore" : "/onboarding");
+    if (isAuthed && onboardingComplete) {
+      router.replace("/explore");
     }
   }, [isAuthed, isLoading, onboardingComplete, router]);
 

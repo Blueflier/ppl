@@ -10,14 +10,25 @@ export function DiscoveryPanel() {
   const chatHistory = useQuery(api.ideate.getChatHistory);
   const saveRsvp = useMutation(api.rsvps.saveRsvp);
 
-  // Collect extracted interests from chat messages
+  // Collect extracted interests and matched event type names from chat messages
   const chatInterests = (chatHistory ?? [])
     .flatMap((m) => m.extractedInterests ?? [])
     .filter((v, i, a) => a.indexOf(v) === i); // dedupe
 
+  const matchedEventTypeNames = (chatHistory ?? [])
+    .flatMap((m) => m.matchedEventTypeNames ?? [])
+    .filter((v, i, a) => a.indexOf(v) === i); // dedupe
+
+  const hasAnyInput = chatInterests.length > 0 || matchedEventTypeNames.length > 0;
+
   const matchingEventTypes = useQuery(
     api.eventTypes.getMatchingEventTypes,
-    chatInterests.length > 0 ? { interests: chatInterests } : "skip"
+    hasAnyInput
+      ? {
+          interests: chatInterests,
+          eventTypeNames: matchedEventTypeNames.length > 0 ? matchedEventTypeNames : undefined,
+        }
+      : "skip"
   );
 
   const withActiveEvent = (matchingEventTypes ?? []).filter(
@@ -92,7 +103,6 @@ export function DiscoveryPanel() {
                     eventTypeId={et._id}
                     displayName={et.displayName}
                     imageUrl={et.imageUrl}
-                    interestedCount={et.interestedCount}
                     matchedInterests={et.matchedInterests}
                     animationDelay={i * 100}
                   />
@@ -110,19 +120,16 @@ function GaugingDiscoveryCard({
   eventTypeId,
   displayName,
   imageUrl,
-  interestedCount,
   matchedInterests,
   animationDelay,
 }: {
   eventTypeId: string;
   displayName: string;
   imageUrl: string | null;
-  interestedCount: number;
   matchedInterests: string[];
   animationDelay: number;
 }) {
   const href = `/event-type/${eventTypeId}`;
-  const needed = Math.max(0, 3 - interestedCount);
 
   return (
     <div
@@ -157,24 +164,6 @@ function GaugingDiscoveryCard({
         <p className="mt-1 text-xs text-sage italic truncate">
           Matched: because you like {matchedInterests.join(" & ")}
         </p>
-
-        {/* Gauge progress */}
-        <div className="mt-1.5 flex items-center gap-2">
-          <div className="flex gap-0.5">
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className={`h-1.5 w-5 rounded-full ${
-                  i < interestedCount ? "bg-sage" : "bg-gray-200"
-                }`}
-              />
-            ))}
-          </div>
-          <span className="text-[11px] text-gray-400">
-            {interestedCount}/3 interested
-            {needed > 0 && ` — need ${needed} more`}
-          </span>
-        </div>
       </div>
     </div>
   );

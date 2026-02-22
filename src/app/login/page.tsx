@@ -33,10 +33,11 @@ export default function LoginPage() {
       formData.set("password", password);
       formData.set("flow", step);
       await signIn("password", formData);
-    } catch {
+    } catch (err) {
+      console.error("Auth error:", err);
       setError(
         step === "signUp"
-          ? "Could not create account. Try a different email."
+          ? `Could not create account. This email may already be registered — try signing in instead. (${err instanceof Error ? err.message : String(err)})`
           : "Invalid email or password."
       );
     } finally {
