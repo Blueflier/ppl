@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import Link from "next/link";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { useExploreContext } from "../layout";
 
 function formatTime(ts: number): string {
   const d = new Date(ts);
@@ -23,11 +25,17 @@ function formatTime(ts: number): string {
 
 export default function FriendsPage() {
   const { isAuthed } = useAuth();
+  const { selectedEventId, setSelectedEventId, setVisibleEventIds } = useExploreContext();
   const friendEvents = useQuery(
     api.rsvps.getFriendEvents,
     isAuthed ? {} : "skip"
   );
   const saveRsvp = useMutation(api.rsvps.saveRsvp);
+
+  useEffect(() => {
+    if (!friendEvents) return;
+    setVisibleEventIds(new Set(friendEvents.map((e) => e._id)));
+  }, [friendEvents, setVisibleEventIds]);
 
   if (friendEvents === undefined) {
     return (
@@ -56,7 +64,10 @@ export default function FriendsPage() {
       {friendEvents.map((event) => (
         <div
           key={event._id}
-          className="flex items-stretch gap-3 rounded-2xl border border-gray-200 p-3"
+          className={`flex items-stretch gap-3 rounded-2xl border border-gray-200 p-3 cursor-pointer transition-shadow ${
+            selectedEventId === event._id ? "ring-2 ring-sage shadow-lg" : ""
+          }`}
+          onClick={() => setSelectedEventId(event._id)}
         >
           {event.imageUrl ? (
             <img
@@ -105,18 +116,12 @@ export default function FriendsPage() {
           >
             {/* Sliding background */}
             <div
-              className={`absolute inset-x-0 h-1/2 bg-sage rounded-md mx-0.5 transition-all duration-300 ease-in-out ${
-                event.currentResponse === "can_go" ? "top-[calc(50%-2px)]" : "top-0.5"
+              className={`absolute inset-x-0 h-1/2 rounded-md mx-0.5 transition-all duration-300 ease-in-out ${
+                event.currentResponse === "can_go"
+                  ? "top-0.5 bg-green-600"
+                  : "top-[calc(50%-2px)] bg-red-500"
               }`}
             />
-            {/* Not Going label */}
-            <div
-              className={`flex-1 flex items-center justify-center text-[10px] font-semibold z-10 transition-colors duration-300 ${
-                event.currentResponse !== "can_go" ? "text-white" : "text-gray-400"
-              }`}
-            >
-              Pass
-            </div>
             {/* Going label */}
             <div
               className={`flex-1 flex items-center justify-center text-[10px] font-semibold z-10 transition-colors duration-300 ${
@@ -124,6 +129,14 @@ export default function FriendsPage() {
               }`}
             >
               I&apos;m In
+            </div>
+            {/* Not Going label */}
+            <div
+              className={`flex-1 flex items-center justify-center text-[10px] font-semibold z-10 transition-colors duration-300 ${
+                event.currentResponse !== "can_go" ? "text-white" : "text-gray-400"
+              }`}
+            >
+              Pass
             </div>
           </button>
         </div>

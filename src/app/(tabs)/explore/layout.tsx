@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useCallback } from "react";
 import { TopTabBar } from "@/components/ui/TopTabBar";
 import { EventMap } from "@/components/ui/EventMap";
 import { Id } from "../../../../convex/_generated/dataModel";
@@ -8,11 +8,15 @@ import { Id } from "../../../../convex/_generated/dataModel";
 interface ExploreContextType {
   selectedEventId: Id<"events"> | null;
   setSelectedEventId: (id: Id<"events"> | null) => void;
+  visibleEventIds: Set<string> | null;
+  setVisibleEventIds: (ids: Set<string> | null) => void;
 }
 
 const ExploreContext = createContext<ExploreContextType>({
   selectedEventId: null,
   setSelectedEventId: () => {},
+  visibleEventIds: null,
+  setVisibleEventIds: () => {},
 });
 
 export function useExploreContext() {
@@ -27,9 +31,24 @@ export default function ExploreLayout({
   const [selectedEventId, setSelectedEventId] = useState<Id<"events"> | null>(
     null
   );
+  const [visibleEventIds, setVisibleEventIds] = useState<Set<string> | null>(
+    null
+  );
+
+  const setVisibleEventIdsStable = useCallback(
+    (ids: Set<string> | null) => setVisibleEventIds(ids),
+    []
+  );
 
   return (
-    <ExploreContext.Provider value={{ selectedEventId, setSelectedEventId }}>
+    <ExploreContext.Provider
+      value={{
+        selectedEventId,
+        setSelectedEventId,
+        visibleEventIds,
+        setVisibleEventIds: setVisibleEventIdsStable,
+      }}
+    >
       <div className="flex flex-col h-screen">
         {/* Full-width header */}
         <div className="sticky top-0 z-40 bg-white border-b border-gray-200">
@@ -59,6 +78,7 @@ export default function ExploreLayout({
             <EventMap
               selectedEventId={selectedEventId}
               onSelectEvent={setSelectedEventId}
+              visibleEventIds={visibleEventIds}
             />
           </div>
         </div>

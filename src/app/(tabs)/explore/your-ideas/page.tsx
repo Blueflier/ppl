@@ -1,15 +1,23 @@
 "use client";
 
+import { useEffect } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { useExploreContext } from "../layout";
 
 export default function YourIdeasPage() {
   const { isAuthed } = useAuth();
+  const { setVisibleEventIds } = useExploreContext();
   const ideatedEventTypes = useQuery(
     api.eventTypes.getUserIdeatedEventTypes,
     isAuthed ? {} : "skip"
   );
+
+  // Your Ideas tab has no map events
+  useEffect(() => {
+    setVisibleEventIds(new Set());
+  }, [setVisibleEventIds]);
 
   if (!ideatedEventTypes) {
     return (

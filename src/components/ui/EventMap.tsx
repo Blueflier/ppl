@@ -11,11 +11,17 @@ import "mapbox-gl/dist/mapbox-gl.css";
 interface EventMapProps {
   selectedEventId: Id<"events"> | null;
   onSelectEvent: (id: Id<"events">) => void;
+  visibleEventIds?: Set<string> | null;
 }
 
-export function EventMap({ selectedEventId, onSelectEvent }: EventMapProps) {
+export function EventMap({ selectedEventId, onSelectEvent, visibleEventIds }: EventMapProps) {
   const mapRef = useRef<MapRef>(null);
-  const events = useQuery(api.events.getMapEvents);
+  const allEvents = useQuery(api.events.getMapEvents);
+
+  // Filter to only visible events if a filter is provided
+  const events = allEvents && visibleEventIds
+    ? allEvents.filter((e) => visibleEventIds.has(e._id))
+    : allEvents;
 
   // Fly to selected event when it changes
   useEffect(() => {

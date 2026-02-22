@@ -10,7 +10,7 @@ import type { Id } from "../../../../../convex/_generated/dataModel";
 
 export default function GoingToPage() {
   const { isAuthed } = useAuth();
-  const { selectedEventId } = useExploreContext();
+  const { selectedEventId, setSelectedEventId, setVisibleEventIds } = useExploreContext();
   const upcomingEvents = useQuery(
     api.events.getUpcomingEvents,
     isAuthed ? {} : "skip"
@@ -46,6 +46,13 @@ export default function GoingToPage() {
     [saveRsvp]
   );
 
+  const goingTo = (upcomingEvents ?? []).filter((e) => e.currentResponse === "can_go");
+  const goingToIds = goingTo.map((e) => e._id).join(",");
+
+  useEffect(() => {
+    setVisibleEventIds(new Set(goingToIds ? goingToIds.split(",") : []));
+  }, [goingToIds, setVisibleEventIds]);
+
   if (!upcomingEvents) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -53,8 +60,6 @@ export default function GoingToPage() {
       </div>
     );
   }
-
-  const goingTo = upcomingEvents.filter((e) => e.currentResponse === "can_go");
 
   if (goingTo.length === 0) {
     return (
@@ -71,10 +76,11 @@ export default function GoingToPage() {
       {goingTo.map((event) => (
         <div
           key={event._id}
-          className={`rounded-2xl transition-shadow ${
+          className={`rounded-2xl transition-shadow cursor-pointer ${
             selectedEventId === event._id ? "ring-2 ring-sage shadow-lg" : ""
           }`}
           id={`event-${event._id}`}
+          onClick={() => setSelectedEventId(event._id)}
         >
           <RSVPCard
             eventName={event.eventName}
@@ -84,7 +90,7 @@ export default function GoingToPage() {
             attendeeCount={event.attendeeCount}
             matchReason={event.matchReason}
             hostName={event.hostName}
-            rsvpDeadline={event.rsvpDeadline}
+            rsvpDeadline={undefined}
             currentResponse={event.currentResponse}
             isJustConfirmed={justConfirmedId === event._id}
             detailHref={`/event-type/${event.eventTypeId}`}

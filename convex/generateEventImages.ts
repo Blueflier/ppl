@@ -8,10 +8,15 @@ export const generateEventImage = internalAction({
   args: {
     eventTypeId: v.id("eventTypes"),
     displayName: v.string(),
+    activity: v.optional(v.string()),
   },
-  handler: async (ctx, { eventTypeId, displayName }) => {
+  handler: async (ctx, { eventTypeId, displayName, activity }) => {
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) throw new Error("OPENROUTER_API_KEY not set");
+
+    // Use activity (the actual interest like "country dancing") for the prompt,
+    // falling back to displayName only if activity isn't provided
+    const subject = activity ?? displayName.replace(/meetup|mixer|session|club|night/gi, "").trim();
 
     const response = await fetch(
       "https://openrouter.ai/api/v1/chat/completions",
@@ -29,7 +34,7 @@ export const generateEventImage = internalAction({
               content: [
                 {
                   type: "text",
-                  text: `Vibrant, colorful illustration of ${displayName}. Bold saturated colors, rich palette, lively and energetic mood. ABSOLUTELY NO TEXT, NO LETTERS, NO WORDS, NO NUMBERS, NO WRITING — pure visual art only.`,
+                  text: `A clean flat-style illustration of objects and items associated with ${subject} — arranged as a still life or top-down flat lay. Show only physical objects like equipment, tools, food, gear, etc. No people, no faces, no hands, no text, no letters, no words. Soft pastel background, warm lighting, minimal and modern aesthetic.`,
                 },
               ],
             },

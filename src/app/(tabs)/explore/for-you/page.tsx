@@ -14,7 +14,7 @@ const PAGE_SIZE = 3;
 
 export default function ForYouPage() {
   const { isAuthed } = useAuth();
-  const { selectedEventId } = useExploreContext();
+  const { selectedEventId, setSelectedEventId, setVisibleEventIds } = useExploreContext();
   const eventTypes = useQuery(api.eventTypes.getEventTypes);
   const gauges = useQuery(
     api.eventGauges.getUserGauges,
@@ -62,6 +62,12 @@ export default function ForYouPage() {
     }
     return result;
   }, [userInterests, eventTypes]);
+
+  // For You shows all upcoming events on the map
+  useEffect(() => {
+    if (!upcomingEvents) return;
+    setVisibleEventIds(new Set(upcomingEvents.map((e) => e._id)));
+  }, [upcomingEvents, setVisibleEventIds]);
 
   useEffect(() => {
     if (selectedEventId) {
@@ -121,10 +127,11 @@ export default function ForYouPage() {
   const renderEventCard = (event: NonNullable<typeof upcomingEvents>[number]) => (
     <div
       key={event._id}
-      className={`rounded-2xl transition-shadow ${
+      className={`rounded-2xl transition-shadow cursor-pointer ${
         selectedEventId === event._id ? "ring-2 ring-sage shadow-lg" : ""
       }`}
       id={`event-${event._id}`}
+      onClick={() => setSelectedEventId(event._id)}
     >
       <RSVPCard
         eventName={event.eventName}
