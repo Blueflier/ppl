@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/AuthProvider";
 import ParticleCanvas from "./components/ParticleCanvas";
@@ -41,16 +40,18 @@ const useCases = [
 
 export default function Home() {
   const router = useRouter();
-  const { isAuthed, isLoading, onboardingComplete } = useAuth();
+  const { isAuthed, onboardingComplete } = useAuth();
 
-  useEffect(() => {
-    if (isLoading) return;
+  const handleGetStarted = () => {
     if (isAuthed && onboardingComplete) {
-      router.replace("/explore");
+      router.push("/explore");
+    } else if (isAuthed) {
+      router.push("/onboarding");
+    } else {
+      router.push("/login");
     }
-  }, [isAuthed, isLoading, onboardingComplete, router]);
+  };
 
-  // Show landing page for unauthenticated users
   return (
     <div className="bg-white">
       {/* Hero Section */}
@@ -73,7 +74,7 @@ export default function Home() {
             The AI that brings the right people together.
           </p>
           <button
-            onClick={() => router.push("/login")}
+            onClick={handleGetStarted}
             className="mt-8 rounded-full bg-black px-8 py-3 text-lg font-medium text-white transition-transform hover:scale-105"
           >
             Get Started
@@ -200,7 +201,7 @@ export default function Home() {
         {/* Bottom CTA */}
         <div className="mt-20 flex justify-center">
           <button
-            onClick={() => router.push("/login")}
+            onClick={handleGetStarted}
             className="rounded-full bg-black px-10 py-4 text-lg font-medium text-white transition-transform hover:scale-105"
           >
             Get Started
