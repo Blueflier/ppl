@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, internalMutation, internalQuery, query } from "./_generated/server";
+import { mutation, internalMutation, query } from "./_generated/server";
 import { getAuthedUserId } from "./authHelpers";
 
 export const getUser = query({

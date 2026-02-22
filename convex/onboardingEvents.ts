@@ -36,7 +36,7 @@ ${answersText}
 
 Each event needs:
 - name: lowercase_snake_case identifier
-- displayName: catchy event title (2-4 words)
+- displayName: catchy event title (2-4 words). Be creative — DON'T default to "[Topic] Mixer" or "[Topic] Meetup". Use vivid, specific names like "Sunset Jam Session", "Golden Gate Run Club", "Dim Sum & Debate", "Hack Night at the Park".
 - venueType: one of [${VENUE_TYPE_LIST}]
 - description: fun 1-2 sentence description of the vibe
 - activity: the core activity (for image generation)
