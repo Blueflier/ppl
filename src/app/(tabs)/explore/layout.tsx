@@ -31,8 +31,9 @@ export default function ExploreLayout({
   return (
     <ExploreContext.Provider value={{ selectedEventId, setSelectedEventId }}>
       <div className="flex flex-col h-screen">
+        {/* Full-width header */}
         <div className="sticky top-0 z-40 bg-white border-b border-gray-200">
-          <div className="px-4 pt-4 pb-1">
+          <div className="px-4 pt-4 pb-2">
             <p className="text-xs font-medium text-black/50 tracking-wide uppercase">
               San Francisco
             </p>
@@ -41,11 +42,19 @@ export default function ExploreLayout({
               Explore popular events near you
             </p>
           </div>
-          <TopTabBar />
         </div>
 
         <div className="flex flex-1 overflow-hidden">
-          <div className="w-1/2 overflow-y-auto">{children}</div>
+          {/* Left column — single scroll container */}
+          <div className="w-1/2 overflow-y-auto">
+            {/* Tab bar */}
+            <TopTabBar />
+
+            {/* Tab content */}
+            {children}
+          </div>
+
+          {/* Map */}
           <div className="w-1/2">
             <EventMap
               selectedEventId={selectedEventId}

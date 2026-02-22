@@ -109,14 +109,25 @@ export const getFriendEvents = query({
           : null;
         const venue = event.venueId ? await ctx.db.get(event.venueId) : null;
 
+        // Get current user's RSVP
+        const userRsvp = userId
+          ? await ctx.db
+              .query("rsvps")
+              .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+              .filter((q) => q.eq(q.field("userId"), userId))
+              .first()
+          : null;
+
         return {
           _id: event._id,
+          eventTypeId: event.eventTypeId,
           eventName: eventType?.displayName ?? "Event",
           imageUrl,
           venueName: venue?.name,
           scheduledTime: event.scheduledTime,
           matchReason: event.matchReason,
           friendNames,
+          currentResponse: (userRsvp?.response as "can_go" | "unavailable" | undefined) ?? null,
         };
       })
     );

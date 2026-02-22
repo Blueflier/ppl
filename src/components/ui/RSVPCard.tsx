@@ -35,10 +35,12 @@ function formatTime(ts: number): string {
 function timeLeft(deadline: number): string {
   const diff = deadline - Date.now();
   if (diff <= 0) return "Expired";
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  if (hours >= 1) return `${hours}h left`;
-  const mins = Math.floor(diff / (1000 * 60));
-  return `${mins}m left`;
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  if (days >= 1) return `${days}d ${hours}h left to RSVP`;
+  if (hours >= 1) return `${hours}h ${mins}m left to RSVP`;
+  return `${mins}m left to RSVP`;
 }
 
 export function RSVPCard({
@@ -99,9 +101,19 @@ export function RSVPCard({
 
       {/* Info */}
       <div className="flex-1 min-w-0 flex flex-col justify-center">
-        <p className="text-sm font-semibold text-black leading-tight truncate">
-          {eventName}
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold text-black leading-tight truncate">
+            {eventName}
+          </p>
+          {detailHref && (
+            <Link
+              href={detailHref}
+              className="text-xs font-medium text-blue shrink-0 hover:underline"
+            >
+              More Info &rsaquo;
+            </Link>
+          )}
+        </div>
 
         {(venueName || scheduledTime) && (
           <p className="mt-0.5 text-xs text-gray-400 truncate">
@@ -127,14 +139,6 @@ export function RSVPCard({
           </p>
         )}
 
-        {detailHref && (
-          <Link
-            href={detailHref}
-            className="mt-1 text-xs font-medium text-blue hover:underline"
-          >
-            More Info &rsaquo;
-          </Link>
-        )}
       </div>
 
       {/* Right column: time + buttons */}

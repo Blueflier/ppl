@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation } from "convex/react";
+import Link from "next/link";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/components/providers/AuthProvider";
 
@@ -55,7 +56,7 @@ export default function FriendsPage() {
       {friendEvents.map((event) => (
         <div
           key={event._id}
-          className="flex items-start gap-3 rounded-2xl border border-gray-200 p-3"
+          className="flex items-stretch gap-3 rounded-2xl border border-gray-200 p-3"
         >
           {event.imageUrl ? (
             <img
@@ -70,10 +71,18 @@ export default function FriendsPage() {
               </span>
             </div>
           )}
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-black leading-tight truncate">
-              {event.eventName}
-            </p>
+          <div className="flex-1 min-w-0 flex flex-col justify-center">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold text-black leading-tight truncate">
+                {event.eventName}
+              </p>
+              <Link
+                href={`/event-type/${event.eventTypeId}`}
+                className="text-xs font-medium text-blue shrink-0 hover:underline"
+              >
+                More Info &rsaquo;
+              </Link>
+            </div>
             {(event.venueName || event.scheduledTime) && (
               <p className="mt-0.5 text-xs text-gray-400 truncate">
                 {[event.venueName, event.scheduledTime ? formatTime(event.scheduledTime) : null]
@@ -81,16 +90,42 @@ export default function FriendsPage() {
                   .join(" · ")}
               </p>
             )}
-            <p className="mt-1 text-xs text-sage font-medium">
+            <p className="mt-0.5 text-xs text-sage font-medium">
               {event.friendNames.join(", ")} {event.friendNames.length === 1 ? "is" : "are"} going
             </p>
-            <button
-              onClick={() => saveRsvp({ eventId: event._id, response: "can_go" })}
-              className="mt-2 w-full rounded-lg bg-sage py-1.5 text-xs font-medium text-white hover:bg-sage/90 transition-colors"
+          </div>
+          <button
+            onClick={() =>
+              saveRsvp({
+                eventId: event._id,
+                response: event.currentResponse === "can_go" ? "unavailable" : "can_go",
+              })
+            }
+            className="shrink-0 self-stretch w-20 rounded-lg border border-gray-200 flex flex-col items-stretch overflow-hidden relative"
+          >
+            {/* Sliding background */}
+            <div
+              className={`absolute inset-x-0 h-1/2 bg-sage rounded-md mx-0.5 transition-all duration-300 ease-in-out ${
+                event.currentResponse === "can_go" ? "top-[calc(50%-2px)]" : "top-0.5"
+              }`}
+            />
+            {/* Not Going label */}
+            <div
+              className={`flex-1 flex items-center justify-center text-[10px] font-semibold z-10 transition-colors duration-300 ${
+                event.currentResponse !== "can_go" ? "text-white" : "text-gray-400"
+              }`}
+            >
+              Pass
+            </div>
+            {/* Going label */}
+            <div
+              className={`flex-1 flex items-center justify-center text-[10px] font-semibold z-10 transition-colors duration-300 ${
+                event.currentResponse === "can_go" ? "text-white" : "text-gray-400"
+              }`}
             >
               I&apos;m In
-            </button>
-          </div>
+            </div>
+          </button>
         </div>
       ))}
     </div>

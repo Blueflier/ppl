@@ -5,16 +5,19 @@ import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { internal, api } from "./_generated/api";
 import {
+  INTEREST_MAP,
   VENUE_SUGGESTIONS,
   matchInterestToEventType,
 } from "./matchingUtils";
 
 const SESSION_ID = "main";
 
+const VENUE_TYPE_LIST = Object.keys(VENUE_SUGGESTIONS).join(", ");
+
 const SYSTEM_PROMPT = `You're a chill concierge connecting people in SF. Ultra casual, brief.
 
 CORE RULE: Extract interests fast. Don't interrogate.
-- Clear interest ("i like basketball") → extract immediately, say "Nice, got it! What else?"
+- Clear interest ("i like basketball") → extract immediately
 - Ambiguous ("i like jazz") → ONE follow-up max: "Listening or playing?" → then extract
 - NEVER ask about: skill level, experience, equipment, logistics, hosting
 - After extracting, always nudge for the next interest
@@ -24,11 +27,29 @@ Follow-up triggers (ONLY these warrant a question):
 - Group size matters for the event format (pickup basketball vs 3v3)
 - That's it. Everything else, just extract and move on.
 
-When you understand a clear interest, quietly extract it (never mention this to the user):
+When you understand a clear interest, quietly extract it AND suggest an event for it (never mention the JSON to the user):
 \`\`\`interests
 [{"category":"hobby","canonicalValue":"jazz piano","rawValue":"playing jazz piano"}]
 \`\`\`
 Categories: hobby, problem, learning, skill. Only extract when specific enough. canonicalValue=short lowercase. Skip already-known interests.
+
+For EVERY interest you extract, also emit an event suggestion:
+\`\`\`eventSuggestion
+{"interest":"jazz piano","eventName":"Jazz Jam Session","venueType":"music_studio","description":"Get together with other jazz nerds to jam, trade licks, and vibe out."}
+\`\`\`
+venueType must be one of: ${VENUE_TYPE_LIST}
+Be creative with eventName — make it sound fun and social. Pick the most fitting venueType. Include a \`description\`: fun 1-2 sentence description of what the event is about. Conversational, explain the vibe.
+
+IMPORTANT — your visible response style:
+- For common interests (basketball, hiking, cooking): "Nice, got it! I'll see who else in SF is down. What else?"
+- For unique/niche interests (unicycle, fermentation, lockpicking): acknowledge it's cool and mention you're putting it out to gauge interest. Examples:
+  - "Unicycle? That's awesome — I'll put that out and see who else in SF is down! What else?"
+  - "Fermentation is so niche, love it. I'll gauge interest for a meetup. Anything else?"
+- For compound/niche combos ("rock climbing while eating bananas"):
+  Split into parts. Recognize what exists ("climbing — on it!") and get hyped about the novel part ("bananas + climbing? that's WILD, making that its own event!").
+  Emit SEPARATE interests + eventSuggestion blocks for each part.
+- Keep it 1-2 sentences max. Always end by asking what else they're into.
+- NEVER mention venue names, times, or logistics — that gets figured out later once enough people are interested.
 
 When the conversation gets specific enough that someone mentions concrete activities (like hosting dinners, having space, organizing meetups), naturally ask if they'd be open to hosting something. Based on their answer, extract:
 \`\`\`hosting
@@ -60,12 +81,24 @@ function parseResponse(text: string): {
     canonicalValue: string;
     rawValue: string;
   }[];
+  eventSuggestions: {
+    interest: string;
+    eventName: string;
+    venueType: string;
+    description?: string;
+  }[];
   hosting: { willingness: "willing" | "not_willing" | "depends" } | null;
 } {
   const interestBlocks: {
     category: "hobby" | "problem" | "learning" | "skill";
     canonicalValue: string;
     rawValue: string;
+  }[] = [];
+  const eventSuggestions: {
+    interest: string;
+    eventName: string;
+    venueType: string;
+    description?: string;
   }[] = [];
   let hosting: { willingness: "willing" | "not_willing" | "depends" } | null =
     null;
@@ -82,6 +115,20 @@ function parseResponse(text: string): {
       }
       return "";
     })
+    .replace(
+      /```eventSuggestion\s*([\s\S]*?)```/g,
+      (_match, jsonStr: string) => {
+        try {
+          const parsed = JSON.parse(jsonStr.trim());
+          if (parsed && parsed.interest && parsed.eventName && parsed.venueType) {
+            eventSuggestions.push(parsed);
+          }
+        } catch {
+          // ignore malformed JSON
+        }
+        return "";
+      }
+    )
     .replace(/```hosting\s*([\s\S]*?)```/g, (_match, jsonStr: string) => {
       try {
         const parsed = JSON.parse(jsonStr.trim());
@@ -93,9 +140,10 @@ function parseResponse(text: string): {
       }
       return "";
     })
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 
-  return { displayText, interests: interestBlocks, hosting };
+  return { displayText, interests: interestBlocks, eventSuggestions, hosting };
 }
 
 export const sendMessage = action({
@@ -137,7 +185,8 @@ export const sendMessage = action({
 
     const rawText =
       response.content[0].type === "text" ? response.content[0].text : "";
-    const { displayText, interests, hosting } = parseResponse(rawText);
+    const { displayText, interests, eventSuggestions, hosting } =
+      parseResponse(rawText);
 
     // Save extracted interests
     if (interests.length > 0) {
@@ -168,7 +217,7 @@ export const sendMessage = action({
       timestamp: Date.now(),
     });
 
-    // ── Generate real-data traces for extracted interests ──
+    // ── Process extracted interests: gauge, create event types, check thresholds ──
     if (interests.length > 0) {
       // Clear old traces before writing new batch
       await ctx.runMutation(internal.ideate.clearTraces, {
@@ -176,19 +225,27 @@ export const sendMessage = action({
         sessionId: SESSION_ID,
       });
 
-      // Fetch real gauge data
+      // Fetch real gauge data for existing event types
       const eventTypeGauges = await ctx.runQuery(
         internal.eventTypes.getGaugeCountsByEventType
       );
 
+      // Build a map of interest → eventSuggestion from Claude
+      const suggestionMap = new Map<string, { eventName: string; venueType: string; description?: string }>();
+      for (const s of eventSuggestions) {
+        suggestionMap.set(s.interest.toLowerCase(), {
+          eventName: s.eventName,
+          venueType: s.venueType,
+          description: s.description,
+        });
+      }
+
       let traceDelay = 0;
       for (const interest of interests) {
-        const match = matchInterestToEventType(
-          interest.canonicalValue,
-          eventTypeGauges
-        );
+        const cv = interest.canonicalValue.toLowerCase();
+        const match = matchInterestToEventType(cv, eventTypeGauges);
 
-        // Trace 1: searching_people
+        // Trace: searching
         await ctx.runMutation(internal.ideate.saveIdeateTrace, {
           userId: user._id,
           sessionId: SESSION_ID,
@@ -199,65 +256,74 @@ export const sendMessage = action({
         });
         traceDelay += 400;
 
-        if (match && match.data.yesCount > 0) {
-          // Trace 2: found_match (with real count)
+        if (match) {
+          // Known interest — auto-gauge "yes" and show trace
+          await ctx.runMutation(
+            internal.matchAndCreateEventsHelpers.autoGaugeYes,
+            { userId: user._id, eventTypeId: match.data.eventTypeId }
+          );
+
+          const totalYes = match.data.yesCount + 1; // +1 for this user
           await ctx.runMutation(internal.ideate.saveIdeateTrace, {
             userId: user._id,
             sessionId: SESSION_ID,
             traceType: "found_match",
-            content: `Found ${match.data.yesCount} people interested in ${match.data.displayName}`,
+            content: `${totalYes} people interested in ${match.data.displayName} — ${totalYes >= 3 ? "enough to set up an event!" : "gauging interest..."}`,
             metadata: {
-              matchedCount: match.data.yesCount,
+              matchedCount: totalYes,
               eventTypeName: match.data.displayName,
             },
             timestamp: Date.now() + traceDelay,
           });
           traceDelay += 400;
+        } else {
+          // Novel interest — create eventType + auto-gauge "yes"
+          // No event yet — it'll appear as a GaugingCard in everyone's For You
+          const suggestion = suggestionMap.get(cv);
+          const etName = cv.replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
+          const displayName =
+            suggestion?.eventName ??
+            `${interest.canonicalValue.charAt(0).toUpperCase() + interest.canonicalValue.slice(1)} Meetup`;
+          const venueType = suggestion?.venueType ?? "outdoor_park";
 
-          // Find venue type for this event type
-          const allEventTypes = await ctx.runQuery(api.eventTypes.getEventTypes);
-          const etData = allEventTypes.find(
-            (et: { name: string }) => et.name === match.etName
+          const eventTypeId = await ctx.runMutation(
+            internal.matchAndCreateEventsHelpers.createEventType,
+            { name: etName, displayName, venueType, description: suggestion?.description }
           );
-          const venueType = etData?.venueType;
-          const venueInfo = venueType
-            ? VENUE_SUGGESTIONS[venueType]
-            : null;
 
-          if (venueInfo) {
-            // Trace 3: searching_venue
-            await ctx.runMutation(internal.ideate.saveIdeateTrace, {
-              userId: user._id,
-              sessionId: SESSION_ID,
-              traceType: "searching_venue",
-              content: `Looking for ${venueInfo.desc}...`,
-              metadata: { eventTypeName: match.data.displayName },
-              timestamp: Date.now() + traceDelay,
-            });
-            traceDelay += 400;
+          // Auto-gauge "yes" for this user
+          await ctx.runMutation(
+            internal.matchAndCreateEventsHelpers.autoGaugeYes,
+            { userId: user._id, eventTypeId }
+          );
 
-            // Trace 4: found_venue
-            await ctx.runMutation(internal.ideate.saveIdeateTrace, {
-              userId: user._id,
-              sessionId: SESSION_ID,
-              traceType: "found_venue",
-              content: `Found ${venueInfo.name}`,
-              metadata: {
-                venueName: venueInfo.name,
-                venueLocation: { lat: venueInfo.lat, lng: venueInfo.lng },
-                eventTypeName: match.data.displayName,
-              },
-              timestamp: Date.now() + traceDelay,
+          // Generate image for the new event type (async — Convex reactivity updates UI when done)
+          try {
+            await ctx.runAction(internal.generateEventImages.generateEventImage, {
+              eventTypeId: eventTypeId as any,
+              displayName,
             });
-            traceDelay += 400;
+          } catch (e) {
+            console.warn(`Image generation failed for "${displayName}":`, e);
           }
+
+          await ctx.runMutation(internal.ideate.saveIdeateTrace, {
+            userId: user._id,
+            sessionId: SESSION_ID,
+            traceType: "found_match",
+            content: `Created "${displayName}" — gauging interest from others in SF...`,
+            metadata: { eventTypeName: displayName },
+            timestamp: Date.now() + traceDelay,
+          });
+          traceDelay += 400;
         }
       }
-    }
 
-    // ── Run matching engine to create events from interests ──
-    if (interests.length > 0) {
-      await ctx.runAction(internal.matchAndCreateEvents.matchAndCreateEvents, {});
+      // Run matching engine — creates events for any eventType with 3+ yes gauges
+      await ctx.runAction(
+        internal.matchAndCreateEvents.matchAndCreateEvents,
+        {}
+      );
     }
 
     return {

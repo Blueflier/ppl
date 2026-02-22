@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 const TABS = [
   {
@@ -38,6 +39,7 @@ const TABS = [
 
 export function SideNav() {
   const pathname = usePathname();
+  const { logout } = useAuth();
 
   return (
     <nav className="fixed left-0 top-0 bottom-0 z-50 w-16 bg-white border-r border-gray-200 flex flex-col items-center pt-6 gap-2">
@@ -58,6 +60,18 @@ export function SideNav() {
           </Link>
         );
       })}
+      <div className="flex-1" />
+      <button
+        onClick={logout}
+        className="mb-4 flex flex-col items-center gap-1 py-2 w-full text-xs font-medium text-gray-400 hover:text-terra transition-colors"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+          <polyline points="16 17 21 12 16 7" />
+          <line x1="21" y1="12" x2="9" y2="12" />
+        </svg>
+        Log out
+      </button>
     </nav>
   );
 }

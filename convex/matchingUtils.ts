@@ -32,6 +32,8 @@ export const INTEREST_MAP: Record<string, string> = {
   woodworking: "maker_workshop",
   making: "maker_workshop",
   "board games": "board_game_night",
+  "video games": "board_game_night",
+  gaming: "board_game_night",
   trivia: "trivia_night",
   writing: "writing_workshop",
   "creative writing": "writing_workshop",

@@ -82,8 +82,9 @@ export const createEventType = internalMutation({
     name: v.string(),
     displayName: v.string(),
     venueType: v.string(),
+    description: v.optional(v.string()),
   },
-  handler: async (ctx, { name, displayName, venueType }) => {
+  handler: async (ctx, { name, displayName, venueType, description }) => {
     // Check if already exists
     const existing = await ctx.db
       .query("eventTypes")
@@ -98,8 +99,32 @@ export const createEventType = internalMutation({
       venueType,
       hostRequired: false,
       minAttendees: 2,
+      ...(description ? { description } : {}),
+      createdAt: Date.now(),
     });
     return id as string;
+  },
+});
+
+export const autoGaugeYes = internalMutation({
+  args: {
+    userId: v.id("users"),
+    eventTypeId: v.string(),
+  },
+  handler: async (ctx, { userId, eventTypeId }) => {
+    const existing = await ctx.db
+      .query("eventGauges")
+      .withIndex("by_userId_eventTypeId", (q) =>
+        q.eq("userId", userId).eq("eventTypeId", eventTypeId as any)
+      )
+      .first();
+    if (existing) return;
+    await ctx.db.insert("eventGauges", {
+      userId,
+      eventTypeId: eventTypeId as any,
+      response: "yes",
+      timestamp: Date.now(),
+    });
   },
 });
 

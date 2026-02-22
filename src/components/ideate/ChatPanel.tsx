@@ -16,6 +16,7 @@ export function ChatPanel() {
     { role: "user" | "assistant"; content: string }[]
   >([]);
   const initialCountRef = useRef<number | null>(null);
+  const lastDbCountRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const chatHistory = useQuery(api.ideate.getChatHistory);
@@ -30,11 +31,14 @@ export function ChatPanel() {
     }
   }, [chatHistory]);
 
+  // Clear optimistic messages only when DB actually gets new messages
   useEffect(() => {
-    if (chatHistory && optimisticMessages.length > 0) {
+    if (!chatHistory) return;
+    if (chatHistory.length > lastDbCountRef.current) {
       setOptimisticMessages([]);
     }
-  }, [chatHistory, optimisticMessages.length]);
+    lastDbCountRef.current = chatHistory.length;
+  }, [chatHistory]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -103,47 +107,42 @@ export function ChatPanel() {
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 pt-4 pb-2">
-        <div className="rounded-2xl border border-gray-200 px-4 py-3 flex items-center justify-between">
+        <div className="rounded-2xl border border-gray-200 px-4 py-3">
           <h1 className="text-xl font-bold text-black">Ideate</h1>
-          {allMessages.length > 0 && (
-            <button
-              onClick={handleClear}
-              className="text-xs text-gray-400 hover:text-black transition-colors"
-            >
-              Clear chat
-            </button>
-          )}
         </div>
 
-        {/* Interest chips */}
+        {/* Interest chips — single row, overflow hidden */}
         {interests && interests.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {interests.map((interest) => (
-              <span
-                key={interest._id}
-                className="inline-flex items-center gap-1 rounded-full bg-sage/10 px-2.5 py-1 text-xs font-medium text-sage animate-[fadeSlideIn_0.3s_ease-out_both]"
-              >
-                {interest.canonicalValue}
-                <svg
-                  className="h-3 w-3 text-sage/60"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={3}
+          <div className="mt-2 flex items-center gap-1.5 overflow-hidden">
+            <div className="flex gap-1.5 overflow-hidden">
+              {interests.map((interest) => (
+                <span
+                  key={interest._id}
+                  className="inline-flex items-center gap-1 rounded-full bg-sage/10 px-2.5 py-1 text-xs font-medium text-sage whitespace-nowrap shrink-0"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-              </span>
-            ))}
-            {interests.length >= 3 && (
-              <span className="text-xs text-gray-400 self-center ml-1">
-                Nice spread! Check Explore
-              </span>
-            )}
+                  {interest.canonicalValue}
+                  <svg
+                    className="h-3 w-3 text-sage/60"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={3}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                </span>
+              ))}
+            </div>
+            <a
+              href="/me"
+              className="text-xs text-sage font-medium whitespace-nowrap shrink-0 hover:underline"
+            >
+              {interests.length} total &gt;
+            </a>
           </div>
         )}
       </div>
@@ -200,6 +199,14 @@ export function ChatPanel() {
             Send
           </button>
         </div>
+        {allMessages.length > 0 && (
+          <button
+            onClick={handleClear}
+            className="mt-2 w-full text-xs text-gray-400 hover:text-black transition-colors"
+          >
+            Clear chat
+          </button>
+        )}
       </div>
     </div>
   );

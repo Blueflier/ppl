@@ -35,12 +35,15 @@ export default function EventTypeDetailPage({
     );
   }
 
-  const rolesText = detail.requiredRoles
-    .map((r) => `${r.role} (${r.min}${r.max ? `-${r.max}` : "+"})`)
-    .join(", ");
+  const sinceDate = detail.createdAt
+    ? new Date(detail.createdAt).toLocaleDateString("en-US", {
+        month: "short",
+        year: "numeric",
+      })
+    : null;
 
   return (
-    <div className="max-w-lg mx-auto p-6 space-y-6">
+    <div className="max-w-lg mx-auto p-6 space-y-5">
       {/* Back link */}
       <Link
         href="/explore"
@@ -49,162 +52,44 @@ export default function EventTypeDetailPage({
         &larr; Back
       </Link>
 
-      {/* Header */}
-      <div className="flex items-start gap-4">
+      {/* Hero image */}
+      <div className="flex justify-center">
         {detail.imageUrl ? (
           <img
             src={detail.imageUrl}
             alt={detail.displayName}
-            className="h-24 w-24 shrink-0 rounded-2xl object-cover"
+            className="w-64 h-64 rounded-2xl object-cover"
           />
         ) : (
-          <div className="h-24 w-24 shrink-0 rounded-2xl border border-gray-200 flex items-center justify-center bg-gray-50">
-            <span className="text-3xl font-bold text-gray-300">
+          <div className="w-64 h-64 rounded-2xl bg-gradient-to-br from-sage/30 to-peach/40 flex items-center justify-center">
+            <span className="text-6xl font-bold text-white/70">
               {detail.displayName.charAt(0)}
             </span>
           </div>
         )}
-        <div>
-          <h1 className="text-2xl font-bold text-black">
-            {detail.displayName}
-          </h1>
-          <p className="text-sm text-gray-400 mt-1">
-            {detail.venueType.replace(/_/g, " ")} &middot; {rolesText}
-          </p>
-          {detail.hostRequired && (
-            <span className="inline-block mt-1 text-xs bg-peach/30 text-terra px-2 py-0.5 rounded-full">
-              Host required
-            </span>
-          )}
-        </div>
       </div>
 
-      {/* Interest Stats */}
-      <div className="rounded-2xl border border-gray-200 p-4 space-y-3">
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
-          Interest
-        </h2>
-        <div className="flex gap-6">
-          <div>
-            <p className="text-3xl font-bold text-sage">{detail.yesCount}</p>
-            <p className="text-xs text-gray-400">interested</p>
-          </div>
-          <div>
-            <p className="text-3xl font-bold text-gray-300">{detail.noCount}</p>
-            <p className="text-xs text-gray-400">passed</p>
-          </div>
-          <div>
-            <p className="text-3xl font-bold text-black">{detail.totalGauges}</p>
-            <p className="text-xs text-gray-400">total responses</p>
-          </div>
-        </div>
-
-        {/* Timeline bar chart grouped by week with month labels */}
-        {detail.gaugeTimeline.length > 0 && (() => {
-          // Group daily data into weeks
-          const weeks: { weekLabel: string; monthLabel: string; yes: number; no: number }[] = [];
-          const weekMap = new Map<string, { yes: number; no: number; date: Date }>();
-          for (const day of detail.gaugeTimeline) {
-            const d = new Date(day.date);
-            // Week key = ISO week start (Monday)
-            const mon = new Date(d);
-            mon.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-            const wk = mon.toISOString().split("T")[0];
-            const existing = weekMap.get(wk) ?? { yes: 0, no: 0, date: mon };
-            existing.yes += day.yes;
-            existing.no += day.no;
-            weekMap.set(wk, existing);
-          }
-          for (const [key, val] of Array.from(weekMap.entries()).sort()) {
-            const d = val.date;
-            weeks.push({
-              weekLabel: key,
-              monthLabel: d.toLocaleDateString("en-US", { month: "short" }),
-              yes: val.yes,
-              no: val.no,
-            });
-          }
-          const maxTotal = Math.max(...weeks.map((w) => w.yes + w.no));
-
-          // Determine which bars should show a month label (first bar of each month)
-          let lastMonth = "";
-
-          return (
-            <div className="pt-3 border-t border-gray-100">
-              <p className="text-xs text-gray-400 mb-2">Interest over time</p>
-              <div className="flex items-end gap-1 h-24">
-                {weeks.map((week) => {
-                  const total = week.yes + week.no;
-                  const barHeight = Math.max(4, (total / maxTotal) * 64);
-                  const yesRatio = total > 0 ? week.yes / total : 0;
-                  const showMonth = week.monthLabel !== lastMonth;
-                  lastMonth = week.monthLabel;
-                  return (
-                    <div
-                      key={week.weekLabel}
-                      className="flex-1 flex flex-col items-center justify-end"
-                      title={`Week of ${week.weekLabel}: ${week.yes} yes, ${week.no} no`}
-                    >
-                      <div className="w-full flex flex-col justify-end">
-                        <div
-                          className="rounded-t w-full"
-                          style={{
-                            height: `${barHeight * yesRatio}px`,
-                            backgroundColor: "var(--sage)",
-                          }}
-                        />
-                        <div
-                          className="rounded-b w-full"
-                          style={{
-                            height: `${barHeight * (1 - yesRatio)}px`,
-                            backgroundColor: "#e5e7eb",
-                          }}
-                        />
-                      </div>
-                      <span className={`text-[9px] text-gray-400 mt-1 ${showMonth ? "" : "invisible"}`}>
-                        {week.monthLabel}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })()}
+      {/* Title + description */}
+      <div>
+        <h1 className="text-3xl font-bold text-black">
+          {detail.displayName}
+        </h1>
+        {detail.description && (
+          <p className="text-base text-gray-500 mt-1">{detail.description}</p>
+        )}
       </div>
 
-      {/* First mention */}
-      {detail.firstMention && (
-        <div className="rounded-2xl border border-gray-200 p-4">
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">
-            First mentioned
-          </h2>
-          <p className="text-sm text-black">
-            {detail.firstMention.userName ?? "Someone"} first brought this up on{" "}
-            {new Date(detail.firstMention.timestamp).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })}
-          </p>
-        </div>
-      )}
-
-      {/* Past events */}
-      {detail.completedEventCount > 0 && (
-        <div className="rounded-2xl border border-gray-200 p-4">
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">
-            Past events
-          </h2>
-          <p className="text-sm text-black">
-            {detail.completedEventCount} event
-            {detail.completedEventCount > 1 ? "s" : ""} completed
-            {detail.totalAttendees > 0 && (
-              <> &middot; {detail.totalAttendees} total attendees</>
-            )}
-          </p>
-        </div>
-      )}
+      {/* Pills */}
+      <div className="flex flex-wrap gap-2">
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-sage/15 text-sage">
+          {detail.yesCount} interested
+        </span>
+        {sinceDate && (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-500">
+            since {sinceDate}
+          </span>
+        )}
+      </div>
 
       {/* Active event */}
       {detail.activeEvent && (

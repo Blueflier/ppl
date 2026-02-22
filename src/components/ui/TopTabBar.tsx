@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 const SUB_TABS = [
   { path: "/explore/for-you", label: "For You" },
   { path: "/explore/friends", label: "Friends" },
+  { path: "/explore/going-to", label: "Going To" },
+  { path: "/explore/your-ideas", label: "Your Ideas" },
 ];
 
 export function TopTabBar() {

@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { GaugingCard } from "@/components/ui/GaugingCard";
 import { RSVPCard } from "@/components/ui/RSVPCard";
 import { useExploreContext } from "../layout";
+import { INTEREST_MAP } from "../../../../../convex/matchingUtils";
 import type { Id } from "../../../../../convex/_generated/dataModel";
+
+const PAGE_SIZE = 3;
 
 export default function ForYouPage() {
   const { isAuthed } = useAuth();
@@ -22,9 +25,43 @@ export default function ForYouPage() {
     isAuthed ? {} : "skip"
   );
   const saveGauge = useMutation(api.eventGauges.saveGauge);
+  const userInterests = useQuery(
+    api.interests.getUserInterests,
+    isAuthed ? {} : "skip"
+  );
   const saveRsvp = useMutation(api.rsvps.saveRsvp);
-
   const [justConfirmedId, setJustConfirmedId] = useState<string | null>(null);
+  const [happeningPage, setHappeningPage] = useState(0);
+
+  // Build reverse map: eventType name → user interest canonical values
+  const etMatchReasons = useMemo(() => {
+    if (!userInterests || !eventTypes) return new Map<string, string>();
+    const reverseMap = new Map<string, string[]>();
+    for (const [interestVal, etName] of Object.entries(INTEREST_MAP)) {
+      const userHas = userInterests.some((ui) => ui.canonicalValue === interestVal);
+      if (userHas) {
+        reverseMap.set(etName, [...(reverseMap.get(etName) ?? []), interestVal]);
+      }
+    }
+    // Also fuzzy match for dynamically created event types
+    for (const et of eventTypes) {
+      if (reverseMap.has(et.name)) continue;
+      const etReadable = et.name.replace(/_/g, " ");
+      for (const ui of userInterests) {
+        const cv = ui.canonicalValue.toLowerCase();
+        if (etReadable.includes(cv) || cv.includes(etReadable)) {
+          reverseMap.set(et.name, [...(reverseMap.get(et.name) ?? []), cv]);
+        }
+      }
+    }
+    // Convert to "because you like X" strings keyed by et name
+    const result = new Map<string, string>();
+    for (const [etName, interests] of reverseMap) {
+      const unique = [...new Set(interests)];
+      result.set(etName, `because you like ${unique.join(" & ")}`);
+    }
+    return result;
+  }, [userInterests, eventTypes]);
 
   useEffect(() => {
     if (selectedEventId) {
@@ -34,7 +71,6 @@ export default function ForYouPage() {
     }
   }, [selectedEventId]);
 
-  // After re-render with the card in "Going To", scroll to it
   useEffect(() => {
     if (justConfirmedId) {
       const el = document.getElementById(`event-${justConfirmedId}`);
@@ -47,10 +83,15 @@ export default function ForYouPage() {
     }
   }, [justConfirmedId, upcomingEvents]);
 
+  // Reset page when upcoming events data changes
+  const upcomingLength = upcomingEvents?.length ?? 0;
+  useEffect(() => {
+    setHappeningPage(0);
+  }, [upcomingLength]);
+
   const handleCanGo = useCallback(
     (eventId: Id<"events">) => {
       saveRsvp({ eventId, response: "can_go" });
-      // Small delay so confetti fires first, then mark for scroll
       setTimeout(() => setJustConfirmedId(eventId), 300);
     },
     [saveRsvp]
@@ -64,15 +105,18 @@ export default function ForYouPage() {
     );
   }
 
-  // Build a map of eventTypeId → response for gauging cards
   const gaugeMap = new Map(
     gauges.map((g) => [g.eventTypeId, g.response as "yes" | "no"])
   );
 
-  // Split upcoming events into sections
-  const goingTo = (upcomingEvents ?? []).filter((e) => e.currentResponse === "can_go");
+  // Only happeningSoon and passed — goingTo is on its own tab
   const happeningSoon = (upcomingEvents ?? []).filter((e) => !e.currentResponse);
   const passed = (upcomingEvents ?? []).filter((e) => e.currentResponse === "unavailable");
+
+  // Pagination for happeningSoon
+  const totalHappeningPages = Math.max(1, Math.ceil(happeningSoon.length / PAGE_SIZE));
+  const clampedPage = Math.min(happeningPage, totalHappeningPages - 1);
+  const happeningSlice = happeningSoon.slice(clampedPage * PAGE_SIZE, (clampedPage + 1) * PAGE_SIZE);
 
   const renderEventCard = (event: NonNullable<typeof upcomingEvents>[number]) => (
     <div
@@ -102,23 +146,34 @@ export default function ForYouPage() {
 
   return (
     <div className="flex flex-col gap-3 p-4">
-      {/* Going To */}
-      {goingTo.length > 0 && (
-        <>
-          <h2 className="text-sm font-semibold text-sage uppercase tracking-wide">
-            Going To
-          </h2>
-          {goingTo.map(renderEventCard)}
-        </>
-      )}
-
       {/* Happening Soon */}
       {happeningSoon.length > 0 && (
         <>
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
-            Happening Soon
-          </h2>
-          {happeningSoon.map(renderEventCard)}
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
+              Happening Soon
+            </h2>
+            {totalHappeningPages > 1 && (
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                <button
+                  onClick={() => setHappeningPage((p) => Math.max(0, p - 1))}
+                  disabled={clampedPage === 0}
+                  className="disabled:opacity-30 hover:text-black transition-colors"
+                >
+                  &lt;
+                </button>
+                <span>{clampedPage + 1}/{totalHappeningPages}</span>
+                <button
+                  onClick={() => setHappeningPage((p) => Math.min(totalHappeningPages - 1, p + 1))}
+                  disabled={clampedPage >= totalHappeningPages - 1}
+                  className="disabled:opacity-30 hover:text-black transition-colors"
+                >
+                  &gt;
+                </button>
+              </div>
+            )}
+          </div>
+          {happeningSlice.map(renderEventCard)}
         </>
       )}
 
@@ -133,6 +188,7 @@ export default function ForYouPage() {
           imageUrl={eventType.imageUrl}
           currentResponse={gaugeMap.get(eventType._id) ?? null}
           href={`/event-type/${eventType._id}`}
+          matchReason={etMatchReasons.get(eventType.name)}
           onYes={() =>
             saveGauge({ eventTypeId: eventType._id, response: "yes" })
           }

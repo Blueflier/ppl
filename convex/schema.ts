@@ -67,6 +67,8 @@ export default defineSchema({
     minAttendees: v.number(),
     eventSchema: v.optional(v.any()),
     imageStorageId: v.optional(v.id("_storage")),
+    description: v.optional(v.string()),
+    createdAt: v.optional(v.number()),
   }).index("by_name", ["name"]),
 
   events: defineTable({

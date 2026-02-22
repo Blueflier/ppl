@@ -170,33 +170,33 @@ const SEED_VENUES = [
 ];
 
 const EVENT_TYPE_DEFS = [
-  { name: "jazz_jam", displayName: "Jazz Jam", requiredRoles: [{ role: "musician", min: 3, max: 8 }], venueType: "music_studio", hostRequired: false, minAttendees: 3 },
-  { name: "pickup_basketball", displayName: "Pickup Basketball", requiredRoles: [{ role: "player", min: 6, max: 10 }], venueType: "outdoor_court", hostRequired: false, minAttendees: 6 },
-  { name: "group_hike", displayName: "Group Hike", requiredRoles: [{ role: "hiker", min: 4, max: 15 }], venueType: "trailhead", hostRequired: false, minAttendees: 4 },
-  { name: "running_club", displayName: "Running Club", requiredRoles: [{ role: "runner", min: 3, max: 20 }], venueType: "outdoor_park", hostRequired: false, minAttendees: 3 },
-  { name: "climbing_session", displayName: "Climbing Session", requiredRoles: [{ role: "climber", min: 2, max: 6 }], venueType: "climbing_gym", hostRequired: false, minAttendees: 2 },
-  { name: "dinner_party", displayName: "Dinner Party", requiredRoles: [{ role: "host", min: 1, max: 1 }, { role: "guest", min: 3, max: 8 }], venueType: "private_home", hostRequired: true, minAttendees: 4 },
-  { name: "book_club", displayName: "Book Club", requiredRoles: [{ role: "reader", min: 4, max: 10 }], venueType: "cafe", hostRequired: false, minAttendees: 4 },
-  { name: "wine_tasting", displayName: "Wine Tasting", requiredRoles: [{ role: "taster", min: 4, max: 12 }], venueType: "bar_lounge", hostRequired: false, minAttendees: 4 },
-  { name: "pottery_workshop", displayName: "Pottery Workshop", requiredRoles: [{ role: "potter", min: 3, max: 8 }], venueType: "gallery", hostRequired: false, minAttendees: 3 },
-  { name: "painting_session", displayName: "Painting Session", requiredRoles: [{ role: "painter", min: 3, max: 10 }], venueType: "gallery", hostRequired: false, minAttendees: 3 },
-  { name: "yoga_session", displayName: "Yoga Session", requiredRoles: [{ role: "practitioner", min: 4, max: 15 }], venueType: "community_space", hostRequired: false, minAttendees: 4 },
-  { name: "photo_walk", displayName: "Photo Walk", requiredRoles: [{ role: "photographer", min: 3, max: 12 }], venueType: "trailhead", hostRequired: false, minAttendees: 3 },
-  { name: "hackathon", displayName: "Hackathon", requiredRoles: [{ role: "developer", min: 4, max: 20 }], venueType: "coworking_space", hostRequired: false, minAttendees: 4 },
-  { name: "maker_workshop", displayName: "Maker Workshop", requiredRoles: [{ role: "maker", min: 2, max: 8 }], venueType: "makerspace", hostRequired: false, minAttendees: 2 },
-  { name: "board_game_night", displayName: "Board Game Night", requiredRoles: [{ role: "player", min: 3, max: 8 }], venueType: "cafe", hostRequired: false, minAttendees: 3 },
-  { name: "trivia_night", displayName: "Trivia Night", requiredRoles: [{ role: "player", min: 4, max: 6 }], venueType: "bar_lounge", hostRequired: false, minAttendees: 4 },
-  { name: "writing_workshop", displayName: "Writing Workshop", requiredRoles: [{ role: "writer", min: 3, max: 8 }], venueType: "bookstore", hostRequired: false, minAttendees: 3 },
-  { name: "classical_ensemble", displayName: "Classical Ensemble", requiredRoles: [{ role: "musician", min: 3, max: 6 }], venueType: "music_venue", hostRequired: false, minAttendees: 3 },
-  { name: "dance_social", displayName: "Dance Social", requiredRoles: [{ role: "dancer", min: 6, max: 20 }], venueType: "dance_studio", hostRequired: false, minAttendees: 6 },
-  { name: "pickup_volleyball", displayName: "Pickup Volleyball", requiredRoles: [{ role: "player", min: 6, max: 12 }], venueType: "outdoor_court", hostRequired: false, minAttendees: 6 },
-  { name: "surf_session", displayName: "Surf Session", requiredRoles: [{ role: "surfer", min: 2, max: 6 }], venueType: "beach", hostRequired: false, minAttendees: 2 },
-  { name: "skate_session", displayName: "Skate Session", requiredRoles: [{ role: "skater", min: 2, max: 8 }], venueType: "skatepark", hostRequired: false, minAttendees: 2 },
-  { name: "startup_mixer", displayName: "Startup Mixer", requiredRoles: [{ role: "attendee", min: 8, max: 30 }], venueType: "coworking_space", hostRequired: false, minAttendees: 8 },
-  { name: "garden_meetup", displayName: "Garden Meetup", requiredRoles: [{ role: "gardener", min: 3, max: 10 }], venueType: "community_garden", hostRequired: false, minAttendees: 3 },
-  { name: "homebrew_club", displayName: "Homebrew Club", requiredRoles: [{ role: "brewer", min: 3, max: 8 }], venueType: "brewery", hostRequired: false, minAttendees: 3 },
-  { name: "design_critique", displayName: "Design Critique", requiredRoles: [{ role: "designer", min: 3, max: 8 }], venueType: "coworking_space", hostRequired: false, minAttendees: 3 },
-  { name: "drag_brunch", displayName: "Drag Brunch", requiredRoles: [{ role: "attendee", min: 6, max: 20 }], venueType: "restaurant", hostRequired: false, minAttendees: 6 },
+  { name: "jazz_jam", displayName: "Jazz Jam", requiredRoles: [{ role: "musician", min: 3, max: 8 }], venueType: "music_studio", hostRequired: false, minAttendees: 3, description: "Pull up with your instrument and jam with other jazz heads. Standards, improv, whatever — just vibes." },
+  { name: "pickup_basketball", displayName: "Pickup Basketball", requiredRoles: [{ role: "player", min: 6, max: 10 }], venueType: "outdoor_court", hostRequired: false, minAttendees: 6, description: "Run full-court pickup games. All skill levels, just bring your A-game attitude." },
+  { name: "group_hike", displayName: "Group Hike", requiredRoles: [{ role: "hiker", min: 4, max: 15 }], venueType: "trailhead", hostRequired: false, minAttendees: 4, description: "Explore SF's trails with a crew. Casual pace, epic views, and solid company." },
+  { name: "running_club", displayName: "Running Club", requiredRoles: [{ role: "runner", min: 3, max: 20 }], venueType: "outdoor_park", hostRequired: false, minAttendees: 3, description: "Regular group runs around the city. All paces welcome, nobody gets left behind." },
+  { name: "climbing_session", displayName: "Climbing Session", requiredRoles: [{ role: "climber", min: 2, max: 6 }], venueType: "climbing_gym", hostRequired: false, minAttendees: 2, description: "Hit the climbing gym with other climbers. Spot each other, share beta, send projects." },
+  { name: "dinner_party", displayName: "Dinner Party", requiredRoles: [{ role: "host", min: 1, max: 1 }, { role: "guest", min: 3, max: 8 }], venueType: "private_home", hostRequired: true, minAttendees: 4, description: "Someone hosts, everyone cooks or brings something. Great food, better conversation." },
+  { name: "book_club", displayName: "Book Club", requiredRoles: [{ role: "reader", min: 4, max: 10 }], venueType: "cafe", hostRequired: false, minAttendees: 4, description: "Read something great, then talk about it with people who actually finished the book." },
+  { name: "wine_tasting", displayName: "Wine Tasting", requiredRoles: [{ role: "taster", min: 4, max: 12 }], venueType: "bar_lounge", hostRequired: false, minAttendees: 4, description: "Taste and talk wine with people who appreciate the good stuff. No pretension, just palates." },
+  { name: "pottery_workshop", displayName: "Pottery Workshop", requiredRoles: [{ role: "potter", min: 3, max: 8 }], venueType: "gallery", hostRequired: false, minAttendees: 3, description: "Get your hands dirty on the wheel or hand-build something. Messy and meditative." },
+  { name: "painting_session", displayName: "Painting Session", requiredRoles: [{ role: "painter", min: 3, max: 10 }], venueType: "gallery", hostRequired: false, minAttendees: 3, description: "Paint alongside others in a gallery setting. Bring your own supplies or share what's there." },
+  { name: "yoga_session", displayName: "Yoga Session", requiredRoles: [{ role: "practitioner", min: 4, max: 15 }], venueType: "community_space", hostRequired: false, minAttendees: 4, description: "Flow with a group in a chill setting. All levels, no judgment, just breathe." },
+  { name: "photo_walk", displayName: "Photo Walk", requiredRoles: [{ role: "photographer", min: 3, max: 12 }], venueType: "trailhead", hostRequired: false, minAttendees: 3, description: "Explore neighborhoods through your lens with other photographers. Street, portrait, whatever your style." },
+  { name: "hackathon", displayName: "Hackathon", requiredRoles: [{ role: "developer", min: 4, max: 20 }], venueType: "coworking_space", hostRequired: false, minAttendees: 4, description: "Build something from scratch with a crew of devs. Ship it by the end of the day or die trying." },
+  { name: "maker_workshop", displayName: "Maker Workshop", requiredRoles: [{ role: "maker", min: 2, max: 8 }], venueType: "makerspace", hostRequired: false, minAttendees: 2, description: "Tinker, build, and prototype at a makerspace. 3D printing, electronics, woodworking — go wild." },
+  { name: "board_game_night", displayName: "Board Game Night", requiredRoles: [{ role: "player", min: 3, max: 8 }], venueType: "cafe", hostRequired: false, minAttendees: 3, description: "Crack open some board games and get competitive. Strategy, party games, whatever the group's feeling." },
+  { name: "trivia_night", displayName: "Trivia Night", requiredRoles: [{ role: "player", min: 4, max: 6 }], venueType: "bar_lounge", hostRequired: false, minAttendees: 4, description: "Team up and flex your random knowledge. Winning doesn't matter but also it totally does." },
+  { name: "writing_workshop", displayName: "Writing Workshop", requiredRoles: [{ role: "writer", min: 3, max: 8 }], venueType: "bookstore", hostRequired: false, minAttendees: 3, description: "Workshop your writing with other writers. Fiction, essays, poetry — bring your pages." },
+  { name: "classical_ensemble", displayName: "Classical Ensemble", requiredRoles: [{ role: "musician", min: 3, max: 6 }], venueType: "music_venue", hostRequired: false, minAttendees: 3, description: "Play chamber music with other classically trained musicians. Strings, keys, winds — all welcome." },
+  { name: "dance_social", displayName: "Dance Social", requiredRoles: [{ role: "dancer", min: 6, max: 20 }], venueType: "dance_studio", hostRequired: false, minAttendees: 6, description: "Dance the night away — salsa, swing, freestyle. No partner needed, just rhythm." },
+  { name: "pickup_volleyball", displayName: "Pickup Volleyball", requiredRoles: [{ role: "player", min: 6, max: 12 }], venueType: "outdoor_court", hostRequired: false, minAttendees: 6, description: "Casual pickup volleyball — all skill levels. Just show up and we'll get a game going." },
+  { name: "surf_session", displayName: "Surf Session", requiredRoles: [{ role: "surfer", min: 2, max: 6 }], venueType: "beach", hostRequired: false, minAttendees: 2, description: "Catch waves with other surfers at Ocean Beach. Dawn patrol or afternoon glass-off." },
+  { name: "skate_session", displayName: "Skate Session", requiredRoles: [{ role: "skater", min: 2, max: 8 }], venueType: "skatepark", hostRequired: false, minAttendees: 2, description: "Skate the park with other skaters. All levels, all styles. Just roll up." },
+  { name: "startup_mixer", displayName: "Startup Mixer", requiredRoles: [{ role: "attendee", min: 8, max: 30 }], venueType: "coworking_space", hostRequired: false, minAttendees: 8, description: "Meet other founders, builders, and operators in the SF scene. Low-key networking, high-key connections." },
+  { name: "garden_meetup", displayName: "Garden Meetup", requiredRoles: [{ role: "gardener", min: 3, max: 10 }], venueType: "community_garden", hostRequired: false, minAttendees: 3, description: "Get your hands in the dirt with other plant people. Community garden vibes." },
+  { name: "homebrew_club", displayName: "Homebrew Club", requiredRoles: [{ role: "brewer", min: 3, max: 8 }], venueType: "brewery", hostRequired: false, minAttendees: 3, description: "Brew beer (or kombucha, or cider) with other fermentation enthusiasts. Taste-test required." },
+  { name: "design_critique", displayName: "Design Critique", requiredRoles: [{ role: "designer", min: 3, max: 8 }], venueType: "coworking_space", hostRequired: false, minAttendees: 3, description: "Show your work, get honest feedback from other designers. Portfolio pieces, side projects, whatever." },
+  { name: "drag_brunch", displayName: "Drag Brunch", requiredRoles: [{ role: "attendee", min: 6, max: 20 }], venueType: "restaurant", hostRequired: false, minAttendees: 6, description: "Brunch with performances, good food, and great energy. Come as you are, leave fabulous." },
 ];
 
 // ═══════════════════════════════════════════
@@ -845,6 +845,79 @@ export const seedForUser = internalMutation({
 });
 
 // ═══════════════════════════════════════════
+// Seed friend RSVPs — make a user's friends
+// RSVP "can_go" on upcoming events so the
+// Friends tab has data
+// ═══════════════════════════════════════════
+
+export const seedFriendRsvps = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    // Get this user's accepted friends
+    const asRequester = await ctx.db
+      .query("friends")
+      .withIndex("by_requesterId", (q) => q.eq("requesterId", userId))
+      .filter((q) => q.eq(q.field("status"), "accepted"))
+      .collect();
+    const asReceiver = await ctx.db
+      .query("friends")
+      .withIndex("by_receiverId", (q) => q.eq("receiverId", userId))
+      .filter((q) => q.eq(q.field("status"), "accepted"))
+      .collect();
+
+    const friendIds = [
+      ...asRequester.map((f) => f.receiverId),
+      ...asReceiver.map((f) => f.requesterId),
+    ];
+    if (friendIds.length === 0) throw new Error("User has no friends. Run seedForUser first.");
+
+    // Get upcoming events (pending_rsvp or confirmed)
+    const allEvents = await ctx.db.query("events").collect();
+    const upcomingEvents = allEvents.filter(
+      (e) => e.status === "pending_rsvp" || e.status === "confirmed"
+    );
+    if (upcomingEvents.length === 0) throw new Error("No upcoming events to RSVP to.");
+
+    let rsvpCount = 0;
+    for (const friendId of friendIds) {
+      // Each friend RSVPs to 1-3 random upcoming events
+      const eventsForFriend = [...upcomingEvents]
+        .sort(() => Math.random() - 0.5)
+        .slice(0, randInt(1, Math.min(3, upcomingEvents.length)));
+
+      for (const event of eventsForFriend) {
+        // Check if already has RSVP
+        const existing = await ctx.db
+          .query("rsvps")
+          .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+          .filter((q) => q.eq(q.field("userId"), friendId))
+          .first();
+
+        if (!existing) {
+          await ctx.db.insert("rsvps", {
+            userId: friendId,
+            eventId: event._id,
+            response: "can_go",
+            timestamp: Date.now() - randInt(1, 48) * 60 * 60 * 1000,
+          });
+          rsvpCount++;
+        }
+      }
+    }
+
+    const friendNames = await Promise.all(
+      friendIds.map(async (id) => {
+        const u = await ctx.db.get(id);
+        return u?.name ?? "?";
+      })
+    );
+    console.log(
+      `Seeded ${rsvpCount} RSVPs for ${friendIds.length} friends (${friendNames.join(", ")}) across ${upcomingEvents.length} upcoming events`
+    );
+  },
+});
+
+// ═══════════════════════════════════════════
 // Cleanup bad seed data for a user
 // Removes self-friends, duplicate friends, duplicate connections
 // ═══════════════════════════════════════════
@@ -901,5 +974,186 @@ export const cleanupUserSeedData = internalMutation({
     }
 
     console.log(`Cleaned up ${deleted} bad/duplicate records for user ${userId}`);
+  },
+});
+
+// Backfill usernames for seed users that are missing them
+export const backfillUsernames = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const allUsers = await ctx.db.query("users").collect();
+    const usedUsernames = new Set(
+      allUsers.filter((u) => u.username).map((u) => u.username!)
+    );
+
+    let patched = 0;
+    for (const user of allUsers) {
+      if (user.username || !user.name || user.name === "__seed_marker__") continue;
+
+      const parts = user.name.toLowerCase().split(" ");
+      const baseUsername = parts.join("_");
+      let username = baseUsername;
+      let suffix = 1;
+      while (usedUsernames.has(username)) {
+        username = `${baseUsername}${suffix}`;
+        suffix++;
+      }
+      usedUsernames.add(username);
+      await ctx.db.patch(user._id, { username });
+      patched++;
+    }
+
+    console.log(`Backfilled usernames for ${patched} users.`);
+  },
+});
+
+// ═══════════════════════════════════════════
+// Seed Diamond user — simulate a real user
+// who likes video games and should get matched
+// to board_game_night events
+// ═══════════════════════════════════════════
+
+export const seedDiamondUser = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    // Check if already exists
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", "diamond@gmail.com"))
+      .first();
+    if (existing) {
+      console.log("Diamond user already exists:", existing._id);
+      return existing._id;
+    }
+
+    const userId = await ctx.db.insert("users", {
+      email: "diamond@gmail.com",
+      name: "Diamond",
+      username: "diamond",
+      age: 24,
+      neighborhood: "Mission",
+      onboardingComplete: true,
+    });
+
+    // Add video game + gaming interests
+    const interests = [
+      { category: "hobby" as const, value: "video games" },
+      { category: "hobby" as const, value: "board games" },
+      { category: "hobby" as const, value: "gaming" },
+      { category: "learning" as const, value: "game dev" },
+    ];
+
+    for (const { category, value } of interests) {
+      await ctx.db.insert("interests", {
+        userId,
+        category,
+        canonicalValue: value,
+        rawValue: value,
+        source: "onboarding",
+        isActive: true,
+      });
+    }
+
+    // Gauge "yes" on board_game_night event type
+    const allEventTypes = await ctx.db.query("eventTypes").collect();
+    const boardGameET = allEventTypes.find((et) => et.name === "board_game_night");
+    if (boardGameET) {
+      await ctx.db.insert("eventGauges", {
+        userId,
+        eventTypeId: boardGameET._id,
+        response: "yes",
+        timestamp: Date.now(),
+      });
+    }
+
+    // Also gauge hackathon (game dev interest)
+    const hackathonET = allEventTypes.find((et) => et.name === "hackathon");
+    if (hackathonET) {
+      await ctx.db.insert("eventGauges", {
+        userId,
+        eventTypeId: hackathonET._id,
+        response: "yes",
+        timestamp: Date.now(),
+      });
+    }
+
+    console.log(`Seeded Diamond user: ${userId} with ${interests.length} interests + 2 gauges`);
+    return userId;
+  },
+});
+
+// ═══════════════════════════════════════════
+// Backfill descriptions for all event types
+// ═══════════════════════════════════════════
+
+const EVENT_TYPE_DESCRIPTIONS: Record<string, string> = {
+  jazz_jam: "Pull up with your instrument and jam with other jazz heads. Standards, improv, whatever — just vibes.",
+  open_mic: "Get on stage and do your thing — comedy, poetry, music, whatever you've been working on.",
+  band_practice: "Lock in with a crew and rehearse. Bring your gear and come ready to play.",
+  electronic_session: "Cook up beats, tweak synths, and geek out on production with other music nerds.",
+  classical_ensemble: "Play chamber music with other classically trained musicians. Strings, keys, winds — all welcome.",
+  "3v3_basketball": "Run 3v3 half-court games. Fast-paced, competitive, and way less waiting around than full court.",
+  "5v5_soccer": "Full-field pickup soccer. Bring cleats, we'll sort teams when everyone shows up.",
+  pickup_volleyball: "Casual pickup volleyball — all skill levels. Just show up and we'll get a game going.",
+  tennis_doubles: "Find a doubles partner and play a few sets. Friendly competition, no league drama.",
+  group_run: "Lace up and run with a crew. Way more fun than solo miles on the Embarcadero.",
+  cycling_ride: "Group ride through the city or across the bridge. Bring your bike and good energy.",
+  rock_climbing: "Boulder or rope climb with other climbers. Great for finding belay partners and beta.",
+  yoga_session: "Flow with a group in a chill setting. All levels, no judgment, just breathe.",
+  founder_roundtable: "Small group of founders sharing war stories, advice, and honest feedback. No pitching.",
+  language_exchange: "Practice a language with native speakers over coffee. You teach yours, they teach theirs.",
+  book_club: "Read something great, then talk about it with people who actually finished the book.",
+  philosophy_debate: "Dive into big questions with people who love to think out loud. Friendly, not combative.",
+  documentary_screening: "Watch a thought-provoking doc together, then unpack it over drinks after.",
+  photography_walk: "Wander the city with your camera and other photographers. Golden hour hits different in SF.",
+  creative_writing_circle: "Share your writing, get feedback, and riff on prompts with other writers.",
+  hackathon_mini: "Build something cool in a day with designers and devs. No corporate sponsors, just making stuff.",
+  "3d_printing_workshop": "Design and print stuff at a makerspace. Learn from others or nerd out on your own projects.",
+  board_game_night: "Crack open some board games and get competitive. Strategy, party games, whatever the group's feeling.",
+  lan_tournament: "Bring your rig, plug in, and game with people IRL. Way better than solo queue.",
+  chess_club: "Play chess with people at your level or above. Casual games, maybe some blitz if you're brave.",
+  trivia_night: "Team up and flex your random knowledge. Winning doesn't matter but also it totally does.",
+  hiking_group: "Hit the trails with a group. Good conversation, good views, good exercise.",
+  urban_sketching: "Sketch the city together — architecture, people, street scenes. All mediums welcome.",
+  dinner_party: "Someone hosts, everyone cooks or brings something. Great food, better conversation.",
+  couples_activity: "Fun stuff to do with your person and other couples. Double dates but actually good.",
+  pickup_basketball: "Run full-court pickup games. All skill levels, just bring your A-game attitude.",
+  group_hike: "Explore SF's trails with a crew. Casual pace, epic views, and solid company.",
+  running_club: "Regular group runs around the city. All paces welcome, nobody gets left behind.",
+  climbing_session: "Hit the climbing gym with other climbers. Spot each other, share beta, send projects.",
+  wine_tasting: "Taste and talk wine with people who appreciate the good stuff. No pretension, just palates.",
+  pottery_workshop: "Get your hands dirty on the wheel or hand-build something. Messy and meditative.",
+  painting_session: "Paint alongside others in a gallery setting. Bring your own supplies or share what's there.",
+  photo_walk: "Explore neighborhoods through your lens with other photographers. Street, portrait, whatever your style.",
+  hackathon: "Build something from scratch with a crew of devs. Ship it by the end of the day or die trying.",
+  maker_workshop: "Tinker, build, and prototype at a makerspace. 3D printing, electronics, woodworking — go wild.",
+  writing_workshop: "Workshop your writing with other writers. Fiction, essays, poetry — bring your pages.",
+  dance_social: "Dance the night away — salsa, swing, freestyle. No partner needed, just rhythm.",
+  surf_session: "Catch waves with other surfers at Ocean Beach. Dawn patrol or afternoon glass-off.",
+  skate_session: "Skate the park with other skaters. All levels, all styles. Just roll up.",
+  startup_mixer: "Meet other founders, builders, and operators in the SF scene. Low-key networking, high-key connections.",
+  garden_meetup: "Get your hands in the dirt with other plant people. Community garden vibes.",
+  homebrew_club: "Brew beer (or kombucha, or cider) with other fermentation enthusiasts. Taste-test required.",
+  design_critique: "Show your work, get honest feedback from other designers. Portfolio pieces, side projects, whatever.",
+  drag_brunch: "Brunch with performances, good food, and great energy. Come as you are, leave fabulous.",
+  graffiti: "Explore SF's street art scene together. Murals, tags, hidden gems around the city.",
+  super_smash_bros: "Bring a controller, bring a dish, and get ready to settle it in Smash. Potluck rules apply.",
+};
+
+export const backfillDescriptions = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const allEventTypes = await ctx.db.query("eventTypes").collect();
+    let patched = 0;
+
+    for (const et of allEventTypes) {
+      const description = EVENT_TYPE_DESCRIPTIONS[et.name];
+      if (description && !et.description) {
+        await ctx.db.patch(et._id, { description });
+        patched++;
+      }
+    }
+
+    console.log(`Backfilled descriptions for ${patched} event types.`);
   },
 });

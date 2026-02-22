@@ -151,6 +151,82 @@ export const getEventTypeDetail = query({
   },
 });
 
+// Event types the user ideated — matched via their ideateLogs extractedInterests
+export const getUserIdeatedEventTypes = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthedUserId(ctx);
+    if (!userId) return [];
+
+    // Get all interests this user extracted via ideate chat
+    const logs = await ctx.db
+      .query("ideateLogs")
+      .withIndex("by_userId_sessionId", (q) =>
+        q.eq("userId", userId).eq("sessionId", "main")
+      )
+      .collect();
+
+    const ideatedInterests = new Set<string>();
+    for (const log of logs) {
+      if (log.extractedInterests) {
+        for (const i of log.extractedInterests) {
+          ideatedInterests.add(i.toLowerCase());
+        }
+      }
+    }
+    if (ideatedInterests.size === 0) return [];
+
+    // Find event types that match these interests
+    const allEts = await ctx.db.query("eventTypes").collect();
+    const results = [];
+
+    for (const et of allEts) {
+      const etReadable = et.name.replace(/_/g, " ");
+      // Check if any ideated interest maps to this event type
+      let matched = false;
+      for (const interest of ideatedInterests) {
+        const direct = INTEREST_MAP[interest];
+        if (direct === et.name) { matched = true; break; }
+        if (etReadable.includes(interest) || interest.includes(etReadable)) {
+          matched = true; break;
+        }
+      }
+      if (!matched) continue;
+
+      // Get gauge count
+      const gauges = await ctx.db
+        .query("eventGauges")
+        .withIndex("by_eventTypeId", (q) => q.eq("eventTypeId", et._id))
+        .collect();
+      const interestedCount = gauges.filter((g) => g.response === "yes").length;
+
+      // Active event?
+      const events = await ctx.db
+        .query("events")
+        .withIndex("by_eventTypeId", (q) => q.eq("eventTypeId", et._id))
+        .collect();
+      const activeEvent = events.find(
+        (e) => e.status === "pending_rsvp" || e.status === "confirmed"
+      );
+
+      const imageUrl = et.imageStorageId
+        ? await ctx.storage.getUrl(et.imageStorageId)
+        : null;
+
+      results.push({
+        _id: et._id,
+        name: et.name,
+        displayName: et.displayName,
+        imageUrl,
+        interestedCount,
+        hasActiveEvent: !!activeEvent,
+      });
+    }
+
+    return results;
+  },
+});
+
 // Given a list of canonical interest values, return matching eventTypes
 // with gauge counts, active event info, and which interests triggered the match
 export const getMatchingEventTypes = query({
@@ -237,6 +313,7 @@ export const getMatchingEventTypes = query({
         imageUrl,
         interestedCount: yesCount,
         matchedInterests,
+        createdAt: et.createdAt,
         activeEvent: activeEvent
           ? {
               _id: activeEvent._id,

@@ -14,7 +14,7 @@ function InterestStatsPanel({ selectedInterest }: { selectedInterest: string | n
   // Buffer last known good data so we never flash empty
   const [display, setDisplay] = useState<{
     interest: string;
-    stats: { othersCount: number; eventsCount: number; connectionsCount: number };
+    stats: { othersCount: number; eventsCount: number };
   } | null>(null);
 
   useEffect(() => {
@@ -43,10 +43,6 @@ function InterestStatsPanel({ selectedInterest }: { selectedInterest: string | n
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-500">Related events</span>
               <span className="text-sm font-bold text-blue-500">{display.stats.eventsCount}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-500">Your connections</span>
-              <span className="text-sm font-bold text-emerald-600">{display.stats.connectionsCount}</span>
             </div>
           </div>
         </div>

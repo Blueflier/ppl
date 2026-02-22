@@ -92,7 +92,7 @@ export const getInterestStats = query({
   args: { canonicalValue: v.string() },
   handler: async (ctx, { canonicalValue }) => {
     const userId = await getAuthedUserId(ctx);
-    if (!userId) return { othersCount: 0, eventsCount: 0, connectionsCount: 0 };
+    if (!userId) return { othersCount: 0, eventsCount: 0 };
 
     // Count other users with same interest
     const allWithInterest = await ctx.db
@@ -117,16 +117,7 @@ export const getInterestStats = query({
     );
     const eventsCount = matchingEventTypes.length;
 
-    // User's connection count
-    const connections = await ctx.db
-      .query("connections")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .collect();
-    const connectionsCount = new Set(
-      connections.map((c) => c.connectedUserId)
-    ).size;
-
-    return { othersCount, eventsCount, connectionsCount };
+    return { othersCount, eventsCount };
   },
 });
 

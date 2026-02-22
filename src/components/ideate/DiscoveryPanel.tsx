@@ -20,11 +20,10 @@ export function DiscoveryPanel() {
     chatInterests.length > 0 ? { interests: chatInterests } : "skip"
   );
 
-  // Split into pending events vs interest matches
   const withActiveEvent = (matchingEventTypes ?? []).filter(
     (et) => et.activeEvent
   );
-  const withoutActiveEvent = (matchingEventTypes ?? []).filter(
+  const gauging = (matchingEventTypes ?? []).filter(
     (et) => !et.activeEvent
   );
 
@@ -50,11 +49,11 @@ export function DiscoveryPanel() {
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Pending Events — created by matching engine */}
+            {/* Events that hit threshold — have time/place */}
             {withActiveEvent.length > 0 && (
               <div className="space-y-3">
                 <h3 className="text-xs font-semibold text-sage uppercase tracking-wide">
-                  New Events For You
+                  Events Happening
                 </h3>
                 {withActiveEvent.map((et, i) => (
                   <PendingEventCard
@@ -81,20 +80,19 @@ export function DiscoveryPanel() {
               </div>
             )}
 
-            {/* Interest Matches — no event yet */}
-            {withoutActiveEvent.length > 0 && (
+            {/* Still gauging — not enough people yet */}
+            {gauging.length > 0 && (
               <div className="space-y-3">
                 <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                  Interest Matches
+                  Gauging Interest
                 </h3>
-                {withoutActiveEvent.map((et, i) => (
-                  <DiscoveryCard
+                {gauging.map((et, i) => (
+                  <GaugingDiscoveryCard
                     key={et._id}
                     eventTypeId={et._id}
                     displayName={et.displayName}
                     imageUrl={et.imageUrl}
                     interestedCount={et.interestedCount}
-                    venueType={et.venueType}
                     matchedInterests={et.matchedInterests}
                     animationDelay={i * 100}
                   />
@@ -103,6 +101,80 @@ export function DiscoveryPanel() {
             )}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function GaugingDiscoveryCard({
+  eventTypeId,
+  displayName,
+  imageUrl,
+  interestedCount,
+  matchedInterests,
+  animationDelay,
+}: {
+  eventTypeId: string;
+  displayName: string;
+  imageUrl: string | null;
+  interestedCount: number;
+  matchedInterests: string[];
+  animationDelay: number;
+}) {
+  const href = `/event-type/${eventTypeId}`;
+  const needed = Math.max(0, 3 - interestedCount);
+
+  return (
+    <div
+      className="flex items-center gap-3 rounded-2xl border border-gray-200 p-3 animate-[fadeSlideIn_0.3s_ease-out_both]"
+      style={{ animationDelay: `${animationDelay}ms` }}
+    >
+      {/* Square thumbnail */}
+      <Link href={href} className="shrink-0">
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={displayName}
+            className="h-20 w-20 rounded-xl object-cover hover:opacity-80 transition-opacity"
+          />
+        ) : (
+          <div className="h-20 w-20 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors bg-gray-50">
+            <span className="text-2xl font-bold text-gray-300">
+              {displayName.charAt(0)}
+            </span>
+          </div>
+        )}
+      </Link>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <Link href={href}>
+          <p className="text-sm font-semibold text-black leading-tight truncate hover:text-sage transition-colors">
+            {displayName}
+          </p>
+        </Link>
+
+        <p className="mt-1 text-xs text-sage italic truncate">
+          Matched: because you like {matchedInterests.join(" & ")}
+        </p>
+
+        {/* Gauge progress */}
+        <div className="mt-1.5 flex items-center gap-2">
+          <div className="flex gap-0.5">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className={`h-1.5 w-5 rounded-full ${
+                  i < interestedCount ? "bg-sage" : "bg-gray-200"
+                }`}
+              />
+            ))}
+          </div>
+          <span className="text-[11px] text-gray-400">
+            {interestedCount}/3 interested
+            {needed > 0 && ` — need ${needed} more`}
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -164,7 +236,6 @@ function PendingEventCard({
       style={{ animationDelay: `${animationDelay}ms` }}
     >
       <div className="flex items-center gap-3">
-        {/* Square thumbnail */}
         {imageUrl ? (
           <img
             src={imageUrl}
@@ -172,18 +243,24 @@ function PendingEventCard({
             className="h-20 w-20 shrink-0 rounded-xl object-cover"
           />
         ) : (
-          <div className="h-20 w-20 shrink-0 rounded-xl border border-gray-200 flex items-center justify-center">
+          <div className="h-20 w-20 shrink-0 rounded-xl border border-gray-200 flex items-center justify-center bg-gray-50">
             <span className="text-2xl font-bold text-gray-300">
               {displayName.charAt(0)}
             </span>
           </div>
         )}
 
-        {/* Info */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-black leading-tight truncate">
-            {displayName}
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-black leading-tight truncate">
+              {displayName}
+            </p>
+            {activeEvent.rsvpDeadline && (
+              <span className="text-[10px] text-terra font-medium shrink-0">
+                {timeLeft(activeEvent.rsvpDeadline)}
+              </span>
+            )}
+          </div>
           {activeEvent.venueName && activeEvent.scheduledTime && (
             <p className="mt-0.5 text-xs text-gray-400 truncate">
               {activeEvent.venueName} · {formatTime(activeEvent.scheduledTime)}
@@ -201,13 +278,7 @@ function PendingEventCard({
         </div>
       </div>
 
-      {/* RSVP buttons */}
       <div className="flex gap-2 mt-3">
-        {activeEvent.rsvpDeadline && (
-          <span className="text-[10px] text-terra font-medium self-center mr-auto">
-            {timeLeft(activeEvent.rsvpDeadline)}
-          </span>
-        )}
         <button
           onClick={onCanGo}
           className={`flex-1 rounded-lg py-2 text-xs font-medium transition-colors ${
@@ -228,86 +299,6 @@ function PendingEventCard({
         >
           Unavailable
         </button>
-      </div>
-    </div>
-  );
-}
-
-function DiscoveryCard({
-  eventTypeId,
-  displayName,
-  imageUrl,
-  interestedCount,
-  venueType,
-  matchedInterests,
-  animationDelay,
-}: {
-  eventTypeId: string;
-  displayName: string;
-  imageUrl: string | null;
-  interestedCount: number;
-  venueType: string;
-  matchedInterests: string[];
-  animationDelay: number;
-}) {
-  const venue = VENUE_SUGGESTIONS[venueType];
-  const href = `/event-type/${eventTypeId}`;
-
-  return (
-    <div
-      className="flex items-center gap-3 rounded-2xl border border-gray-200 p-3 animate-[fadeSlideIn_0.3s_ease-out_both]"
-      style={{ animationDelay: `${animationDelay}ms` }}
-    >
-      {/* Square thumbnail */}
-      <Link href={href} className="shrink-0">
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={displayName}
-            className="h-20 w-20 rounded-xl object-cover hover:opacity-80 transition-opacity"
-          />
-        ) : (
-          <div className="h-20 w-20 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors">
-            <span className="text-2xl font-bold text-gray-300">
-              {displayName.charAt(0)}
-            </span>
-          </div>
-        )}
-      </Link>
-
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <Link href={href}>
-          <p className="text-sm font-semibold text-black leading-tight truncate hover:text-sage transition-colors">
-            {displayName}
-          </p>
-        </Link>
-
-        <div className="mt-1 flex items-center gap-2">
-          <div className="flex -space-x-1.5">
-            {Array.from({ length: Math.min(interestedCount, 4) }).map(
-              (_, i) => (
-                <div
-                  key={i}
-                  className="h-4 w-4 rounded-full bg-sage/20 border-2 border-white"
-                />
-              )
-            )}
-          </div>
-          <span className="text-xs text-gray-400">
-            {interestedCount > 0
-              ? `${interestedCount} interested`
-              : "Be the first!"}
-          </span>
-        </div>
-
-        {venue && (
-          <p className="mt-1 text-xs text-gray-400 truncate">{venue.name}</p>
-        )}
-
-        <p className="mt-1 text-xs text-sage italic truncate">
-          Matched: because you like {matchedInterests.join(" & ")}
-        </p>
       </div>
     </div>
   );

@@ -1,66 +1,39 @@
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { INTEREST_MAP, VENUE_SUGGESTIONS } from "./matchingUtils";
+import { VENUE_SUGGESTIONS } from "./matchingUtils";
+
+const GAUGE_THRESHOLD = 3;
 
 export const matchAndCreateEvents = internalAction({
   args: {},
   handler: async (ctx) => {
-    // 1. Get all active interests (all users)
-    const allInterests = await ctx.runQuery(
-      internal.matchAndCreateEventsHelpers.getAllActiveInterests
-    );
-
-    // 2. Group by canonicalValue → map to eventType via INTEREST_MAP
-    const interestGroups: Record<string, Set<string>> = {};
-    for (const interest of allInterests) {
-      const cv = interest.canonicalValue.toLowerCase();
-      const etName = INTEREST_MAP[cv];
-      if (!etName) continue;
-      if (!interestGroups[etName]) {
-        interestGroups[etName] = new Set();
-      }
-      interestGroups[etName].add(interest.userId);
-    }
-
-    // 3. Get all event types and active events
+    // Get all event types and check which ones have enough "yes" gauges
     const { eventTypes, activeEvents } = await ctx.runQuery(
       internal.matchAndCreateEventsHelpers.getEventTypesAndActiveEvents
     );
-
-    const eventTypesByName: Record<
-      string,
-      {
-        _id: string;
-        name: string;
-        displayName: string;
-        venueType: string;
-        minAttendees: number;
-      }
-    > = {};
-    for (const et of eventTypes) {
-      eventTypesByName[et.name] = et;
-    }
 
     const activeEventTypeIds = new Set(
       activeEvents.map((e: { eventTypeId: string }) => e.eventTypeId)
     );
 
+    // Get gauge counts for all event types
+    const gaugeCounts = await ctx.runQuery(
+      internal.eventTypes.getGaugeCountsByEventType
+    );
+
     let createdCount = 0;
 
-    // 4. For each eventType with enough interested users, create an event
-    for (const [etName, userIds] of Object.entries(interestGroups)) {
-      const et = eventTypesByName[etName];
-      if (!et) continue;
-
-      const userCount = userIds.size;
-
-      // Skip if not enough attendees
-      if (userCount < et.minAttendees) continue;
-
+    for (const et of eventTypes) {
       // Skip if already has an active event
       if (activeEventTypeIds.has(et._id)) continue;
 
-      // Find/create venue
+      // Check gauge count
+      const gaugeData = gaugeCounts[et.name];
+      const yesCount = gaugeData?.yesCount ?? 0;
+
+      if (yesCount < GAUGE_THRESHOLD) continue;
+
+      // Threshold met — create event with time and venue
       const venueInfo = VENUE_SUGGESTIONS[et.venueType];
       let venueId: string | undefined;
       if (venueInfo) {
@@ -76,21 +49,20 @@ export const matchAndCreateEvents = internalAction({
         );
       }
 
-      // Pick scheduledTime: next Saturday 2pm PT
+      // Next Saturday 2pm
       const now = new Date();
       const daysUntilSaturday = (6 - now.getDay() + 7) % 7 || 7;
       const nextSaturday = new Date(now);
       nextSaturday.setDate(now.getDate() + daysUntilSaturday);
-      nextSaturday.setHours(14, 0, 0, 0); // 2pm local
+      nextSaturday.setHours(14, 0, 0, 0);
       const scheduledTime = nextSaturday.getTime();
 
-      // rsvpDeadline: Friday 6pm PT (day before)
+      // Friday 6pm deadline
       const friday = new Date(nextSaturday);
       friday.setDate(nextSaturday.getDate() - 1);
       friday.setHours(18, 0, 0, 0);
       const rsvpDeadline = friday.getTime();
 
-      // Insert event
       await ctx.runMutation(
         internal.matchAndCreateEventsHelpers.createEvent,
         {
@@ -98,7 +70,7 @@ export const matchAndCreateEvents = internalAction({
           venueId,
           scheduledTime,
           rsvpDeadline,
-          matchReason: `${userCount} people interested in ${et.displayName}`,
+          matchReason: `${yesCount} people interested in ${et.displayName}`,
         }
       );
 
@@ -106,7 +78,7 @@ export const matchAndCreateEvents = internalAction({
     }
 
     console.log(
-      `matchAndCreateEvents: created ${createdCount} events from ${Object.keys(interestGroups).length} interest groups`
+      `matchAndCreateEvents: created ${createdCount} events (threshold: ${GAUGE_THRESHOLD} yes gauges)`
     );
 
     return { createdCount };
