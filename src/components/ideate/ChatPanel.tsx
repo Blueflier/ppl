@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useAction, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { Id } from "../../../convex/_generated/dataModel";
 import { TypeAnimation } from "react-type-animation";
 import { TraceItem } from "./TraceItem";
 
@@ -22,8 +23,11 @@ export function ChatPanel() {
   const chatHistory = useQuery(api.ideate.getChatHistory);
   const interests = useQuery(api.interests.getUserInterests);
   const traces = useQuery(api.ideate.getTraces);
+  const confirmations = useQuery(api.ideate.getPendingConfirmations);
   const sendMessage = useAction(api.ideateAction.sendMessage);
+  const resolveConfirmation = useAction(api.ideateAction.resolveMatchConfirmation);
   const clearChat = useMutation(api.ideate.clearChat);
+  const [resolvingIds, setResolvingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (chatHistory && initialCountRef.current === null) {
@@ -45,7 +49,7 @@ export function ChatPanel() {
       top: scrollRef.current.scrollHeight,
       behavior: "smooth",
     });
-  }, [chatHistory, optimisticMessages, isSending]);
+  }, [chatHistory, optimisticMessages, isSending, traces]);
 
   const handleSend = async () => {
     const text = input.trim();
@@ -104,6 +108,36 @@ export function ChatPanel() {
     );
   };
 
+  const getConfirmationsForMessage = (msgTimestamp: number) => {
+    if (!confirmations) return [];
+    return confirmations.filter(
+      (c) => c.timestamp >= msgTimestamp - 1000 && c.timestamp <= msgTimestamp + 5000
+    );
+  };
+
+  // Traces not associated with any message (e.g. from confirmation resolution)
+  const lastMsgTimestamp = allMessages.length > 0
+    ? allMessages[allMessages.length - 1].timestamp
+    : 0;
+  const orphanTraces = sortedTraces.filter(
+    (t) => t.timestamp > lastMsgTimestamp + 5000
+  );
+
+  const handleResolve = async (id: Id<"matchConfirmations">, resolution: "accepted" | "rejected") => {
+    setResolvingIds((prev) => new Set(prev).add(id));
+    try {
+      await resolveConfirmation({ id, resolution });
+    } catch (e) {
+      console.error("Failed to resolve confirmation:", e);
+    } finally {
+      setResolvingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 pt-4 pb-2">
@@ -151,28 +185,60 @@ export function ChatPanel() {
         <div className="space-y-4">
           <ChatBubble role="assistant" content={OPENING_MESSAGE} />
 
-          {allMessages.map((m, i) => (
-            <ChatBubble
-              key={i}
-              role={m.role}
-              content={m.content}
-              shouldAnimate={m.role === "assistant" && i >= initialCount}
-              extractedInterests={m.extractedInterests}
-              traces={
-                m.role === "assistant" && m.extractedInterests?.length
-                  ? getTracesForMessage(m.timestamp)
-                  : undefined
-              }
-            />
-          ))}
+          {allMessages.map((m, i) => {
+            const msgConfirmations = m.role === "assistant" && m.extractedInterests?.length
+              ? getConfirmationsForMessage(m.timestamp)
+              : [];
+            return (
+              <div key={i}>
+                <ChatBubble
+                  role={m.role}
+                  content={m.content}
+                  shouldAnimate={m.role === "assistant" && i >= initialCount}
+                  extractedInterests={m.extractedInterests}
+                  traces={
+                    m.role === "assistant" && m.extractedInterests?.length
+                      ? getTracesForMessage(m.timestamp)
+                      : undefined
+                  }
+                />
+                {msgConfirmations.map((c) => (
+                  <ConfirmationCard
+                    key={c._id}
+                    confirmation={c}
+                    onResolve={handleResolve}
+                    isResolving={resolvingIds.has(c._id)}
+                  />
+                ))}
+              </div>
+            );
+          })}
 
-          {isSending && (
+          {(isSending || orphanTraces.length > 0) && (
             <div className="flex justify-start">
-              <div className="rounded-2xl border border-gray-200 px-4 py-3">
-                <div className="flex items-center gap-1">
-                  <span className="h-2 w-2 animate-bounce rounded-full bg-gray-400 [animation-delay:0ms]" />
-                  <span className="h-2 w-2 animate-bounce rounded-full bg-gray-400 [animation-delay:150ms]" />
-                  <span className="h-2 w-2 animate-bounce rounded-full bg-gray-400 [animation-delay:300ms]" />
+              <div className="max-w-[85%]">
+                <div className="rounded-xl border border-gray-100 bg-gray-50/50 py-1">
+                  {orphanTraces.map((trace, i) => (
+                    <TraceItem
+                      key={trace._id}
+                      traceType={trace.traceType}
+                      content={trace.content}
+                      metadata={trace.metadata}
+                      animationDelay={i * 100}
+                    />
+                  ))}
+                  {isSending && (
+                    <div className="flex items-center gap-2 px-3 py-2">
+                      <span className="flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:0ms]" />
+                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:150ms]" />
+                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:300ms]" />
+                      </span>
+                      {orphanTraces.length === 0 && (
+                        <span className="text-xs text-gray-400">Thinking...</span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -286,6 +352,63 @@ function ChatBubble({
             )}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function ConfirmationCard({
+  confirmation,
+  onResolve,
+  isResolving,
+}: {
+  confirmation: {
+    _id: Id<"matchConfirmations">;
+    interest: string;
+    matchedEventTypeName: string;
+    suggestedEventName: string;
+    status: "pending" | "accepted" | "rejected";
+  };
+  onResolve: (id: Id<"matchConfirmations">, resolution: "accepted" | "rejected") => void;
+  isResolving: boolean;
+}) {
+  const isPending = confirmation.status === "pending";
+  const isAccepted = confirmation.status === "accepted";
+  const isRejected = confirmation.status === "rejected";
+
+  return (
+    <div className="flex justify-start mt-2">
+      <div className="max-w-[85%]">
+        <div className="rounded-2xl border border-sage/30 bg-sage/5 px-4 py-3">
+          <p className="text-sm text-black">
+            Found similar: <span className="font-semibold">&ldquo;{confirmation.matchedEventTypeName}&rdquo;</span>
+          </p>
+          {isPending && (
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-sm text-gray-500">Close enough?</span>
+              <button
+                onClick={() => onResolve(confirmation._id, "accepted")}
+                disabled={isResolving}
+                className="rounded-lg bg-sage px-3 py-1 text-xs font-medium text-white disabled:opacity-40"
+              >
+                Yes
+              </button>
+              <button
+                onClick={() => onResolve(confirmation._id, "rejected")}
+                disabled={isResolving}
+                className="rounded-lg border border-gray-300 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+              >
+                No
+              </button>
+            </div>
+          )}
+          {isAccepted && (
+            <p className="mt-1 text-xs text-sage">Joined {confirmation.matchedEventTypeName}</p>
+          )}
+          {isRejected && (
+            <p className="mt-1 text-xs text-sage">Created {confirmation.suggestedEventName}</p>
+          )}
+        </div>
       </div>
     </div>
   );

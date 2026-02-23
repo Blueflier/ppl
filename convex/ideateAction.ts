@@ -112,45 +112,55 @@ function parseResponse(text: string): {
   let hosting: { willingness: "willing" | "not_willing" | "depends" } | null =
     null;
 
-  const displayText = text
-    .replace(/```interests\s*([\s\S]*?)```/g, (_match, jsonStr: string) => {
-      try {
-        const parsed = JSON.parse(jsonStr.trim());
-        if (Array.isArray(parsed)) {
-          interestBlocks.push(...parsed);
-        }
-      } catch {
-        // ignore malformed JSON
+  // Strip fenced (```interests...```) and unfenced (interests\n[...]) blocks
+  const stripBlock = (
+    txt: string,
+    keyword: string,
+    bracketOpen: string,
+    bracketClose: string,
+    handler: (json: string) => void
+  ) => {
+    // Fenced: ```keyword ... ```
+    txt = txt.replace(
+      new RegExp("```" + keyword + "\\s*([\\s\\S]*?)```", "g"),
+      (_m, jsonStr: string) => { handler(jsonStr); return ""; }
+    );
+    // Unfenced: keyword followed by JSON (handles missing backticks)
+    const escaped = bracketOpen.replace(/[[\]{}]/g, "\\$&");
+    const closedEscaped = bracketClose.replace(/[[\]{}]/g, "\\$&");
+    txt = txt.replace(
+      new RegExp(keyword + "\\s*\\n?\\s*(" + escaped + "[\\s\\S]*?" + closedEscaped + ")", "g"),
+      (_m, jsonStr: string) => { handler(jsonStr); return ""; }
+    );
+    return txt;
+  };
+
+  let remaining = text;
+
+  remaining = stripBlock(remaining, "interests", "[", "]", (jsonStr) => {
+    try {
+      const parsed = JSON.parse(jsonStr.trim());
+      if (Array.isArray(parsed)) interestBlocks.push(...parsed);
+    } catch { /* ignore */ }
+  });
+
+  remaining = stripBlock(remaining, "eventSuggestion", "{", "}", (jsonStr) => {
+    try {
+      const parsed = JSON.parse(jsonStr.trim());
+      if (parsed?.interest && parsed?.eventName && parsed?.venueType) {
+        eventSuggestions.push(parsed);
       }
-      return "";
-    })
-    .replace(
-      /```eventSuggestion\s*([\s\S]*?)```/g,
-      (_match, jsonStr: string) => {
-        try {
-          const parsed = JSON.parse(jsonStr.trim());
-          if (parsed && parsed.interest && parsed.eventName && parsed.venueType) {
-            eventSuggestions.push(parsed);
-          }
-        } catch {
-          // ignore malformed JSON
-        }
-        return "";
-      }
-    )
-    .replace(/```hosting\s*([\s\S]*?)```/g, (_match, jsonStr: string) => {
-      try {
-        const parsed = JSON.parse(jsonStr.trim());
-        if (parsed && parsed.willingness) {
-          hosting = parsed;
-        }
-      } catch {
-        // ignore malformed JSON
-      }
-      return "";
-    })
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+    } catch { /* ignore */ }
+  });
+
+  remaining = stripBlock(remaining, "hosting", "{", "}", (jsonStr) => {
+    try {
+      const parsed = JSON.parse(jsonStr.trim());
+      if (parsed?.willingness) hosting = parsed;
+    } catch { /* ignore */ }
+  });
+
+  const displayText = remaining.replace(/\n{3,}/g, "\n\n").trim();
 
   return { displayText, interests: interestBlocks, eventSuggestions, hosting };
 }
@@ -296,12 +306,15 @@ Example: {"rock climbing": "climbing_session", "cooking": "dinner_party", "quant
       let traceDelay = 0;
       for (const interest of interests) {
         const cv = interest.canonicalValue.toLowerCase();
-        // Use semantic match first, fall back to INTEREST_MAP
+
+        // Split match sources: hard-coded INTEREST_MAP/substring vs semantic
+        const hardMatch = matchInterestToEventType(cv, eventTypeGauges);
         const semanticMatchName = semanticMatchMap[cv] ?? semanticMatchMap[interest.canonicalValue];
-        const match =
-          semanticMatchName && eventTypeGauges[semanticMatchName]
-            ? { etName: semanticMatchName, data: eventTypeGauges[semanticMatchName] }
-            : matchInterestToEventType(cv, eventTypeGauges);
+        const semanticMatch = !hardMatch && semanticMatchName && eventTypeGauges[semanticMatchName]
+          ? { etName: semanticMatchName, data: eventTypeGauges[semanticMatchName] }
+          : null;
+
+        const match = hardMatch; // only auto-accept hard matches
 
         // Trace: searching
         await ctx.runMutation(internal.ideate.saveIdeateTrace, {
@@ -309,14 +322,14 @@ Example: {"rock climbing": "climbing_session", "cooking": "dinner_party", "quant
           sessionId: SESSION_ID,
           traceType: "searching_people",
           content: `Scanning SF for ${interest.canonicalValue} people...`,
-          metadata: { eventTypeName: match?.data.displayName },
+          metadata: { eventTypeName: match?.data.displayName ?? semanticMatch?.data.displayName },
           timestamp: Date.now() + traceDelay,
         });
         traceDelay += 400;
 
         if (match) {
           matchedEventTypeNames.push(match.etName);
-          // Known interest — auto-gauge "yes" and show trace
+          // Hard match — auto-gauge "yes" and show trace
           await ctx.runMutation(
             internal.matchAndCreateEventsHelpers.autoGaugeYes,
             { userId: user._id, eventTypeId: match.data.eventTypeId }
@@ -332,6 +345,30 @@ Example: {"rock climbing": "climbing_session", "cooking": "dinner_party", "quant
               matchedCount: totalYes,
               eventTypeName: match.data.displayName,
             },
+            timestamp: Date.now() + traceDelay,
+          });
+          traceDelay += 400;
+        } else if (semanticMatch) {
+          // Semantic match — save pending confirmation, don't auto-gauge
+          const suggestion = suggestionMap.get(cv);
+          await ctx.runMutation(internal.ideate.saveMatchConfirmation, {
+            userId: user._id,
+            sessionId: SESSION_ID,
+            interest: interest.canonicalValue,
+            matchedEventTypeId: semanticMatch.data.eventTypeId as any,
+            matchedEventTypeName: semanticMatch.data.displayName,
+            suggestedEventName: suggestion?.eventName ?? `${interest.canonicalValue.charAt(0).toUpperCase() + interest.canonicalValue.slice(1)} Meetup`,
+            suggestedVenueType: suggestion?.venueType ?? "outdoor_park",
+            suggestedDescription: suggestion?.description,
+            timestamp: Date.now() + traceDelay,
+          });
+
+          await ctx.runMutation(internal.ideate.saveIdeateTrace, {
+            userId: user._id,
+            sessionId: SESSION_ID,
+            traceType: "found_match",
+            content: `Found similar: "${semanticMatch.data.displayName}" — is this close enough?`,
+            metadata: { eventTypeName: semanticMatch.data.displayName },
             timestamp: Date.now() + traceDelay,
           });
           traceDelay += 400;
@@ -413,5 +450,97 @@ Example: {"rock climbing": "climbing_session", "cooking": "dinner_party", "quant
       message: displayText,
       extractedInterests: interests,
     };
+  },
+});
+
+export const resolveMatchConfirmation = action({
+  args: {
+    id: v.id("matchConfirmations"),
+    resolution: v.union(v.literal("accepted"), v.literal("rejected")),
+  },
+  handler: async (ctx, { id, resolution }) => {
+    const user = await ctx.runQuery(api.users.getUser);
+    if (!user) throw new Error("Not authenticated");
+
+    // Fetch the confirmation record
+    const confirmation = await ctx.runQuery(internal.ideate.getMatchConfirmation, { id });
+    if (!confirmation || confirmation.userId !== user._id) {
+      throw new Error("Confirmation not found");
+    }
+
+    // Update status
+    await ctx.runMutation(internal.ideate.resolveMatchConfirmationMutation, {
+      id,
+      resolution,
+    });
+
+    let traceDelay = 0;
+    const trace = async (traceType: "searching_people" | "found_match" | "summary", content: string, metadata?: { matchedCount?: number; eventTypeName?: string }) => {
+      await ctx.runMutation(internal.ideate.saveIdeateTrace, {
+        userId: user._id,
+        sessionId: SESSION_ID,
+        traceType,
+        content,
+        metadata,
+        timestamp: Date.now() + traceDelay,
+      });
+      traceDelay += 400;
+    };
+
+    if (resolution === "accepted") {
+      await trace("searching_people", `Joining ${confirmation.matchedEventTypeName}...`, { eventTypeName: confirmation.matchedEventTypeName });
+
+      // Auto-gauge yes for the matched event type
+      await ctx.runMutation(
+        internal.matchAndCreateEventsHelpers.autoGaugeYes,
+        { userId: user._id, eventTypeId: confirmation.matchedEventTypeId as string }
+      );
+
+      await trace("found_match", `You're in for ${confirmation.matchedEventTypeName} — scanning for others in SF...`, { eventTypeName: confirmation.matchedEventTypeName });
+    } else {
+      await trace("searching_people", `Creating "${confirmation.suggestedEventName}"...`, { eventTypeName: confirmation.suggestedEventName });
+
+      // Create a new event type with the suggestion data
+      const etName = confirmation.interest.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
+      const eventTypeId = await ctx.runMutation(
+        internal.matchAndCreateEventsHelpers.createEventType,
+        {
+          name: etName,
+          displayName: confirmation.suggestedEventName,
+          venueType: confirmation.suggestedVenueType,
+          description: confirmation.suggestedDescription,
+        }
+      );
+
+      // Auto-gauge yes
+      await ctx.runMutation(
+        internal.matchAndCreateEventsHelpers.autoGaugeYes,
+        { userId: user._id, eventTypeId }
+      );
+
+      await trace("found_match", `Created "${confirmation.suggestedEventName}" — gauging interest from others in SF...`, { eventTypeName: confirmation.suggestedEventName });
+
+      // Generate image for the new event type
+      try {
+        await ctx.runAction(internal.generateEventImages.generateEventImage, {
+          eventTypeId: eventTypeId as any,
+          displayName: confirmation.suggestedEventName,
+          activity: confirmation.interest,
+        });
+      } catch (e) {
+        console.warn(`Image generation failed for "${confirmation.suggestedEventName}":`, e);
+      }
+    }
+
+    await trace("summary", resolution === "accepted"
+      ? `Looking for matches for ${confirmation.matchedEventTypeName}...`
+      : `Looking for matches for ${confirmation.suggestedEventName}...`
+    );
+
+    // Run matching engine
+    await ctx.runAction(
+      internal.matchAndCreateEvents.matchAndCreateEvents,
+      {}
+    );
   },
 });

@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, internalMutation, query } from "./_generated/server";
+import { mutation, internalMutation, internalQuery, query } from "./_generated/server";
 import { getAuthedUserId } from "./authHelpers";
 
 const SESSION_ID = "main";
@@ -156,5 +156,58 @@ export const saveIdeateInterests = internalMutation({
         isActive: true,
       });
     }
+  },
+});
+
+// ── Match confirmations ──
+
+export const saveMatchConfirmation = internalMutation({
+  args: {
+    userId: v.id("users"),
+    sessionId: v.string(),
+    interest: v.string(),
+    matchedEventTypeId: v.id("eventTypes"),
+    matchedEventTypeName: v.string(),
+    suggestedEventName: v.string(),
+    suggestedVenueType: v.string(),
+    suggestedDescription: v.optional(v.string()),
+    timestamp: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("matchConfirmations", {
+      ...args,
+      status: "pending",
+    });
+  },
+});
+
+export const getPendingConfirmations = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthedUserId(ctx);
+    if (!userId) return [];
+    return await ctx.db
+      .query("matchConfirmations")
+      .withIndex("by_userId_sessionId", (q) =>
+        q.eq("userId", userId).eq("sessionId", SESSION_ID)
+      )
+      .collect();
+  },
+});
+
+export const getMatchConfirmation = internalQuery({
+  args: { id: v.id("matchConfirmations") },
+  handler: async (ctx, { id }) => {
+    return await ctx.db.get(id);
+  },
+});
+
+export const resolveMatchConfirmationMutation = internalMutation({
+  args: {
+    id: v.id("matchConfirmations"),
+    resolution: v.union(v.literal("accepted"), v.literal("rejected")),
+  },
+  handler: async (ctx, { id, resolution }) => {
+    await ctx.db.patch(id, { status: resolution });
   },
 });

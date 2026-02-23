@@ -153,6 +153,19 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_eventId", ["eventId"]),
 
+  matchConfirmations: defineTable({
+    userId: v.id("users"),
+    sessionId: v.string(),
+    interest: v.string(),
+    matchedEventTypeId: v.id("eventTypes"),
+    matchedEventTypeName: v.string(),
+    suggestedEventName: v.string(),
+    suggestedVenueType: v.string(),
+    suggestedDescription: v.optional(v.string()),
+    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("rejected")),
+    timestamp: v.number(),
+  }).index("by_userId_sessionId", ["userId", "sessionId"]),
+
   ideateTraces: defineTable({
     userId: v.id("users"),
     sessionId: v.string(),
