@@ -154,6 +154,7 @@ export default function OnboardingPage() {
                   _id: et._id,
                   displayName: et.displayName,
                   imageUrl: et.imageUrl ?? null,
+                  description: et.description ?? null,
                 }))}
                 onGauge={(eventTypeId, response) => {
                   saveGauge({

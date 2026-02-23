@@ -28,3 +28,5 @@ npx convex dev        # Convex backend (run alongside pnpm dev)
 ```
 
 Requires environment variables for Convex, Mapbox, and Anthropic API keys.
+
+

@@ -7,6 +7,7 @@ interface GaugingEventType {
   _id: string;
   displayName: string;
   imageUrl: string | null;
+  description: string | null;
 }
 
 interface MockGaugingCardsProps {
@@ -43,6 +44,7 @@ export function MockGaugingCards({ eventTypes, onGauge, onComplete }: MockGaugin
       <GaugingCard
         displayName={eventTypes[currentIndex].displayName}
         imageUrl={eventTypes[currentIndex].imageUrl}
+        description={eventTypes[currentIndex].description}
         onYes={() => handleResponse("yes")}
         onNo={() => handleResponse("no")}
       />

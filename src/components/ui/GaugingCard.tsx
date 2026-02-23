@@ -11,6 +11,7 @@ interface GaugingCardProps {
   nearbyCount?: number;
   href?: string;
   matchReason?: string;
+  description?: string | null;
 }
 
 export function GaugingCard({
@@ -22,6 +23,7 @@ export function GaugingCard({
   nearbyCount,
   href,
   matchReason,
+  description,
 }: GaugingCardProps) {
   return (
     <div className="flex items-center gap-3 rounded-2xl border border-gray-200 p-3">
@@ -68,6 +70,9 @@ export function GaugingCard({
           <p className="text-sm font-semibold text-black leading-tight truncate">
             {displayName}
           </p>
+        )}
+        {description && (
+          <p className="mt-0.5 text-xs text-zinc-500 line-clamp-2">{description}</p>
         )}
         {matchReason && (
           <p className="mt-0.5 text-xs text-sage italic truncate">{matchReason}</p>
