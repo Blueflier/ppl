@@ -1,6 +1,5 @@
 "use node";
 
-import Anthropic from "@anthropic-ai/sdk";
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { internal, api } from "./_generated/api";
@@ -31,7 +30,17 @@ When you understand a clear interest, quietly extract it AND suggest an event fo
 \`\`\`interests
 [{"category":"hobby","canonicalValue":"jazz piano","rawValue":"playing jazz piano"}]
 \`\`\`
-Categories: hobby, problem, learning, skill. Only extract when specific enough. canonicalValue=short lowercase. Skip already-known interests.
+Categories: hobby, problem, learning, skill. Only extract when specific enough. canonicalValue=short lowercase. Skip already-known interests UNLESS the user is explicitly asking you to create an event for it (see below).
+
+EXPLICIT EVENT REQUESTS:
+If the user says things like "I want a [X] event", "create a [X] event", "make a new [X] event", "set up [X]", "can we do [X]", or otherwise explicitly asks for an event to be created — you MUST:
+1. Re-emit the interest block even if it's already known
+2. Emit an eventSuggestion block
+3. Respond acknowledging that you're setting up the event (not just logging an interest)
+Example responses:
+- "On it — setting up a unicycle event and looking for others in SF who are down!"
+- "Creating a burrito-making event — I'll find people and a spot!"
+This is different from just expressing an interest. "I like unicycles" = interest. "I want a unicycle event" = event request.
 
 For EVERY interest you extract, also emit an event suggestion:
 \`\`\`eventSuggestion
@@ -146,6 +155,32 @@ function parseResponse(text: string): {
   return { displayText, interests: interestBlocks, eventSuggestions, hosting };
 }
 
+async function openRouterChat(
+  messages: { role: string; content: string }[],
+  model = "google/gemini-2.5-flash",
+  maxTokens = 800
+): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error("OPENROUTER_API_KEY not set");
+
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ model, messages, max_tokens: maxTokens }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`OpenRouter API error: ${response.status} ${err}`);
+  }
+
+  const result = await response.json();
+  return result.choices?.[0]?.message?.content ?? "";
+}
+
 export const sendMessage = action({
   args: { message: v.string() },
   handler: async (ctx, { message }) => {
@@ -166,7 +201,7 @@ export const sendMessage = action({
       timestamp: Date.now(),
     });
 
-    // Build conversation for Claude
+    // Build conversation
     const allMessages = [
       ...chatHistory.map((m) => ({ role: m.role, content: m.content })),
       { role: "user" as const, content: message },
@@ -174,17 +209,12 @@ export const sendMessage = action({
     const existingCanonicals = existingInterests.map((i) => i.canonicalValue);
     const { system, messages } = buildMessages(allMessages, existingCanonicals);
 
-    // Call Claude
-    const client = new Anthropic();
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 800,
-      system,
-      messages,
-    });
+    // Call Gemini via OpenRouter
+    const rawText = await openRouterChat([
+      { role: "system", content: system },
+      ...messages,
+    ]);
 
-    const rawText =
-      response.content[0].type === "text" ? response.content[0].text : "";
     const { displayText, interests, eventSuggestions, hosting } =
       parseResponse(rawText);
 
@@ -217,7 +247,7 @@ export const sendMessage = action({
         internal.eventTypes.getGaugeCountsByEventType
       );
 
-      // Build a map of interest → eventSuggestion from Claude
+      // Build a map of interest → eventSuggestion
       const suggestionMap = new Map<string, { eventName: string; venueType: string; description?: string }>();
       for (const s of eventSuggestions) {
         suggestionMap.set(s.interest.toLowerCase(), {
@@ -227,18 +257,15 @@ export const sendMessage = action({
         });
       }
 
-      // ── Semantic matching via Claude ──
-      // One fast call to map all extracted interests to existing event types
+      // ── Semantic matching via Gemini ──
       const eventTypeEntries = Object.entries(eventTypeGauges).map(
         ([name, d]) => `${name} (${d.displayName})`
       );
-      let claudeMatchMap: Record<string, string | null> = {};
+      let semanticMatchMap: Record<string, string | null> = {};
       if (eventTypeEntries.length > 0) {
         try {
-          const matchResponse = await client.messages.create({
-            model: "claude-haiku-4-5-20251001",
-            max_tokens: 300,
-            messages: [
+          const matchText = await openRouterChat(
+            [
               {
                 role: "user",
                 content: `Match each interest to the most semantically related event type. Only match if there's a real connection.
@@ -251,17 +278,15 @@ Return ONLY JSON: {"interest_value": "event_type_name" | null}
 Example: {"rock climbing": "climbing_session", "cooking": "dinner_party", "quantum physics": null}`,
               },
             ],
-          });
-          const matchText =
-            matchResponse.content[0].type === "text"
-              ? matchResponse.content[0].text
-              : "";
+            "google/gemini-2.5-flash",
+            300
+          );
           const jsonMatch = matchText.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
-            claudeMatchMap = JSON.parse(jsonMatch[0]);
+            semanticMatchMap = JSON.parse(jsonMatch[0]);
           }
         } catch (e) {
-          console.warn("Claude semantic matching failed, falling back:", e);
+          console.warn("Semantic matching failed, falling back:", e);
         }
       }
 
@@ -271,11 +296,11 @@ Example: {"rock climbing": "climbing_session", "cooking": "dinner_party", "quant
       let traceDelay = 0;
       for (const interest of interests) {
         const cv = interest.canonicalValue.toLowerCase();
-        // Use Claude's semantic match first, fall back to INTEREST_MAP
-        const claudeMatchName = claudeMatchMap[cv] ?? claudeMatchMap[interest.canonicalValue];
+        // Use semantic match first, fall back to INTEREST_MAP
+        const semanticMatchName = semanticMatchMap[cv] ?? semanticMatchMap[interest.canonicalValue];
         const match =
-          claudeMatchName && eventTypeGauges[claudeMatchName]
-            ? { etName: claudeMatchName, data: eventTypeGauges[claudeMatchName] }
+          semanticMatchName && eventTypeGauges[semanticMatchName]
+            ? { etName: semanticMatchName, data: eventTypeGauges[semanticMatchName] }
             : matchInterestToEventType(cv, eventTypeGauges);
 
         // Trace: searching
@@ -312,7 +337,6 @@ Example: {"rock climbing": "climbing_session", "cooking": "dinner_party", "quant
           traceDelay += 400;
         } else {
           // Novel interest — create eventType + auto-gauge "yes"
-          // No event yet — it'll appear as a GaugingCard in everyone's For You
           const suggestion = suggestionMap.get(cv);
           const etName = cv.replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
           const displayName =
@@ -332,7 +356,7 @@ Example: {"rock climbing": "climbing_session", "cooking": "dinner_party", "quant
             { userId: user._id, eventTypeId }
           );
 
-          // Generate image for the new event type (async — Convex reactivity updates UI when done)
+          // Generate image for the new event type
           try {
             await ctx.runAction(internal.generateEventImages.generateEventImage, {
               eventTypeId: eventTypeId as any,
@@ -361,7 +385,7 @@ Example: {"rock climbing": "climbing_session", "cooking": "dinner_party", "quant
         {}
       );
 
-      // Save assistant message (after processing so we can include matchedEventTypeNames)
+      // Save assistant message
       await ctx.runMutation(internal.ideate.saveIdeateLog, {
         userId: user._id,
         sessionId: SESSION_ID,

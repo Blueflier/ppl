@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 
 interface Particle {
   originX: number;
@@ -14,18 +14,53 @@ interface Particle {
   sizeFactor: number;
 }
 
-const CONFIG = {
-  density: 13,
-  size: 19,
-  jitter: 3.5,
-  speed: 0.23,
-  opacity: 0.7,
+const DEFAULT_CONFIG = {
+  density: 7,
+  size: 9,
+  jitter: 2.5,
+  speed: 0.08,
+  opacity: 1,
 };
 
 export default function ParticleCanvas({ src }: { src: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
   const animationRef = useRef<number>(0);
+  const imageDataRef = useRef<{ data: Uint8ClampedArray; width: number; height: number } | null>(null);
+  const configRef = useRef(DEFAULT_CONFIG);
+
+  const rebuildParticles = useCallback(() => {
+    const imgData = imageDataRef.current;
+    if (!imgData) return;
+    const { data, width, height } = imgData;
+    const particles: Particle[] = [];
+    const step = Math.floor(configRef.current.density);
+
+    for (let y = 0; y < height; y += step) {
+      for (let x = 0; x < width; x += step) {
+        const index = (y * width + x) * 4;
+        const r = data[index];
+        const g = data[index + 1];
+        const b = data[index + 2];
+        const a = data[index + 3];
+        if (a > 128) {
+          particles.push({
+            originX: x,
+            originY: y,
+            x,
+            y,
+            rgbString: `rgb(${r},${g},${b})`,
+            angle: Math.random() * Math.PI * 2,
+            speedVariance: Math.random() * 0.5 + 0.5,
+            opacityFactor: Math.random() * 0.7 + 0.3,
+            sizeFactor: Math.random() * 0.6 + 0.4,
+          });
+        }
+      }
+    }
+
+    particlesRef.current = particles;
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -43,50 +78,25 @@ export default function ParticleCanvas({ src }: { src: string }) {
 
       ctx.drawImage(img, 0, 0);
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const data = imageData.data;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      const particles: Particle[] = [];
-      const step = Math.floor(CONFIG.density);
-
-      for (let y = 0; y < canvas.height; y += step) {
-        for (let x = 0; x < canvas.width; x += step) {
-          const index = (y * canvas.width + x) * 4;
-          const r = data[index];
-          const g = data[index + 1];
-          const b = data[index + 2];
-          const a = data[index + 3];
-          if (a > 128) {
-            particles.push({
-              originX: x,
-              originY: y,
-              x,
-              y,
-              rgbString: `rgb(${r},${g},${b})`,
-              angle: Math.random() * Math.PI * 2,
-              speedVariance: Math.random() * 0.5 + 0.5,
-              opacityFactor: Math.random() * 0.7 + 0.3,
-              sizeFactor: Math.random() * 0.6 + 0.4,
-            });
-          }
-        }
-      }
-
-      particlesRef.current = particles;
+      imageDataRef.current = { data: imageData.data, width: canvas.width, height: canvas.height };
+      rebuildParticles();
 
       function animate() {
         if (!ctx || !canvas) return;
+        const cfg = configRef.current;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         for (const p of particlesRef.current) {
-          p.angle += CONFIG.speed * p.speedVariance;
-          p.x = p.originX + Math.cos(p.angle) * CONFIG.jitter;
-          p.y = p.originY + Math.sin(p.angle) * CONFIG.jitter;
+          p.angle += cfg.speed * p.speedVariance;
+          p.x = p.originX + Math.cos(p.angle) * cfg.jitter;
+          p.y = p.originY + Math.sin(p.angle) * cfg.jitter;
 
           ctx.beginPath();
-          ctx.arc(p.x, p.y, CONFIG.size * p.sizeFactor, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, cfg.size * p.sizeFactor, 0, Math.PI * 2);
           ctx.save();
-          ctx.globalAlpha = CONFIG.opacity * p.opacityFactor;
+          ctx.globalAlpha = cfg.opacity * p.opacityFactor;
           ctx.fillStyle = p.rgbString;
           ctx.fill();
           ctx.restore();
@@ -101,7 +111,7 @@ export default function ParticleCanvas({ src }: { src: string }) {
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, [src]);
+  }, [src, rebuildParticles]);
 
   return (
     <canvas

@@ -1,6 +1,5 @@
 "use node";
 
-import Anthropic from "@anthropic-ai/sdk";
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
@@ -19,18 +18,26 @@ export const generateOnboardingEvents = action({
     ),
   },
   handler: async (ctx, { answers }) => {
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) throw new Error("OPENROUTER_API_KEY not set");
+
     const answersText = answers
       .map((a) => `${a.questionText}: ${a.values.join(", ")}`)
       .join("\n");
 
-    const client = new Anthropic();
-    const response = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 600,
-      messages: [
-        {
-          role: "user",
-          content: `Based on this person's onboarding answers, generate exactly 5 fun, specific event ideas for SF meetups. Make them creative and social — not generic.
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        max_tokens: 600,
+        messages: [
+          {
+            role: "user",
+            content: `Based on this person's onboarding answers, generate exactly 5 fun, specific event ideas for SF meetups. Make them creative and social — not generic.
 
 ${answersText}
 
@@ -43,12 +50,18 @@ Each event needs:
 
 Return ONLY a JSON array:
 [{"name":"...", "displayName":"...", "venueType":"...", "description":"...", "activity":"..."}]`,
-        },
-      ],
+          },
+        ],
+      }),
     });
 
-    const rawText =
-      response.content[0].type === "text" ? response.content[0].text : "";
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`OpenRouter API error: ${response.status} ${err}`);
+    }
+
+    const result = await response.json();
+    const rawText = result.choices?.[0]?.message?.content ?? "";
     const jsonMatch = rawText.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
       console.error("Failed to parse onboarding events:", rawText);

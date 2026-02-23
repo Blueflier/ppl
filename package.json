@@ -9,7 +9,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.78.0",
     "@auth/core": "^0.37.4",
     "@convex-dev/auth": "^0.0.90",
     "@googlemaps/google-maps-services-js": "^3.4.2",

@@ -10,7 +10,7 @@ AI-powered social event concierge for SF. Users share interests → AI matches p
 
 - **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4
 - **Backend**: Convex (database, queries, mutations, actions, scheduled functions)
-- **AI**: Anthropic Claude API (`claude-sonnet-4-6`) via `@anthropic-ai/sdk`
+- **AI**: Google Gemini 2.5 Flash (`google/gemini-2.5-flash`) via OpenRouter API
 - **Auth**: Phone + SMS OTP via Twilio (custom, no auth library)
 - **Calendar**: Google Calendar OAuth via `googleapis`
 - **Venues**: Google Places API via `@googlemaps/google-maps-services-js`

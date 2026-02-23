@@ -15,19 +15,19 @@ const useCases = [
   {
     title: "Find your bandmates",
     description: "You're a drummer looking for a bassist and pianist. PPL finds musicians near you who actually want to jam — not just talk about it.",
-    image: "/jazz.png",
+    image: "/jazz.jpg",
     config: { density: 4, size: 5, jitter: 2.75, speed: 0.14, opacity: 0.75 },
   },
   {
     title: "Run it back at the park",
     description: "5v5 basketball at Golden Gate Park this Saturday. PPL pulls together 10 people who are free, competitive, and ready to hoop.",
-    image: "/running.png",
+    image: "/running.jpg",
     config: { density: 7, size: 7.5, jitter: 2.75, speed: 0.12, opacity: 0.85 },
   },
   {
     title: "New city, instant plans",
     description: "You just landed in SF and there's a run club happening tomorrow morning right when you're free. PPL already knows.",
-    image: "/sf.png",
+    image: "/sf.jpg",
     config: { density: 4, size: 5.5, jitter: 3.5, speed: 0.13, opacity: 0.85 },
   },
   {
@@ -57,7 +57,7 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative h-screen w-full overflow-hidden">
         <div className="absolute inset-0">
-          <ParticleCanvas src="/humans1.png" />
+          <ParticleCanvas src="/humans1.jpg" />
         </div>
         <div className="absolute inset-0 bg-white/40" />
         <div
@@ -113,7 +113,7 @@ export default function Home() {
               Screens replaced people
             </h3>
             <ParticleCard
-              src="/screens.jpg"
+              src="/screens_opt.jpg"
               label="screen time"
               initialConfig={{ density: 5, size: 5.5, jitter: 2, speed: 0.15, opacity: 0.9 }}
             />
