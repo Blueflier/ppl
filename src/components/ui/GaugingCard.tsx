@@ -72,7 +72,7 @@ export function GaugingCard({
           </p>
         )}
         {description && (
-          <p className="mt-0.5 text-xs text-zinc-500 line-clamp-2">{description}</p>
+          <p className="mt-0.5 text-xs text-zinc-500">{description}</p>
         )}
         {matchReason && (
           <p className="mt-0.5 text-xs text-sage italic truncate">{matchReason}</p>
