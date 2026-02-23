@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import ParticleCanvas from "./components/ParticleCanvas";
 import ParticleCard from "./components/ParticleCard";
@@ -41,6 +42,8 @@ const useCases = [
 export default function Home() {
   const router = useRouter();
   const { isAuthed, onboardingComplete } = useAuth();
+  const [letterIndex, setLetterIndex] = useState(0);
+  const [overlayVisible, setOverlayVisible] = useState(true);
 
   const handleGetStarted = () => {
     if (isAuthed && onboardingComplete) {
@@ -51,6 +54,20 @@ export default function Home() {
       router.push("/login");
     }
   };
+
+  useEffect(() => {
+    // p → p → l, each 500ms apart
+    const timers = [
+      setTimeout(() => setLetterIndex(1), 500),
+      setTimeout(() => setLetterIndex(2), 1000),
+      setTimeout(() => setLetterIndex(3), 1500),
+      // After all letters shown, start fading out the white overlay
+      setTimeout(() => setOverlayVisible(false), 2000),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  const letters = ["p", "p", "l"];
 
   return (
     <div className="bg-white">
@@ -66,16 +83,40 @@ export default function Home() {
             background: "linear-gradient(to bottom, transparent, white)",
           }}
         />
-        <div className="relative z-10 flex h-full flex-col items-center justify-center px-6">
+
+        {/* White backdrop that fades out */}
+        <div
+          className="pointer-events-none absolute inset-0 z-20 bg-white"
+          style={{
+            opacity: overlayVisible ? 1 : 0,
+            transition: "opacity 1.5s ease-out",
+          }}
+        />
+
+        {/* Persistent "ppl" + content — sits on top of everything */}
+        <div className="absolute inset-0 z-30 flex h-full flex-col items-center justify-center px-6">
           <h1 className="text-[10rem] font-bold leading-none tracking-tighter text-black">
-            ppl
+            {letters.slice(0, letterIndex).join("")}
+            {/* Invisible placeholder to prevent layout shift */}
+            <span className="invisible">{letters.slice(letterIndex).join("")}</span>
           </h1>
-          <p className="mt-4 max-w-md text-center text-xl text-black/70">
+          <p
+            className="mt-4 max-w-md text-center text-xl text-black/70"
+            style={{
+              opacity: overlayVisible ? 0 : 1,
+              transition: "opacity 1.5s ease-out",
+            }}
+          >
             The AI that brings the right people together.
           </p>
           <button
             onClick={handleGetStarted}
             className="mt-8 rounded-full bg-black px-8 py-3 text-lg font-medium text-white transition-transform hover:scale-105"
+            style={{
+              opacity: overlayVisible ? 0 : 1,
+              transition: "opacity 1.5s ease-out",
+              pointerEvents: overlayVisible ? "none" : "auto",
+            }}
           >
             Get Started
           </button>
